@@ -43,3 +43,11 @@ def test_title_and_type():
     d = _detail("Dec 01, 2026")
     assert L.ibdb_title(d) == "Inter Alia"
     assert L.ibdb_show_type(d) == "Play"
+
+
+def test_name_capture_stops_at_credit_field_labels():
+    # In stripped text the next credit field's label runs right after the name; the
+    # extractor must not absorb it (regression: "Whitney White Press").
+    assert L.capture_name_after("Directed by Whitney White Press Representative", "Directed by") == "Whitney White"
+    assert L.capture_name_after("Directed by Justin Martin Scenic Design", "Directed by") == "Justin Martin"
+    assert L.capture_name_after("Choreographed by Chelsey Arce Casting", "Choreographed by") == "Chelsey Arce"

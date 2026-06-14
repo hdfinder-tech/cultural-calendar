@@ -2275,6 +2275,13 @@ NAME_STOPWORDS = {
     "World", "Premiere", "Based", "After", "Adapted", "Original", "Story", "Translated",
     "English", "Italian", "German", "French", "Featuring", "With", "And", "In", "Revival",
     "For", "Also", "Plus", "Tickets", "Visit", "See",
+    # Production-credit field labels that follow a name in stripped text and otherwise bleed
+    # into it (e.g. "Whitney White Press", "Justin Martin Scenic", "Chelsey Arce Casting").
+    "Press", "Scenic", "Scenery", "Casting", "Projection", "Projections", "Orchestrations",
+    "Orchestration", "General", "Management", "Manager", "Representative", "Associate",
+    "Supervisor", "Supervising", "Hair", "Wig", "Wigs", "Makeup", "Design", "Arrangements",
+    "Incidental", "Additional", "Fight", "Dialect", "Vocal", "Dramaturg", "Direction",
+    "Produced", "Producer", "Producers", "Presented", "Co",
 }
 
 
