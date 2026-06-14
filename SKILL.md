@@ -54,7 +54,19 @@ Preserve original date labels when useful, but do not let labels like `Through..
 
 ## Theatre Rules
 
-Broadway.org is currently the canonical Broadway source for opening dates.
+Broadway.org is the canonical Broadway source for opening dates, but it's a near-term
+"now playing / on sale" list. **IBDB (`ibdb`, ibdb.com/shows) is the forward-looking
+companion** that surfaces announced 2026–27 productions before they're on sale:
+
+- `import_ibdb` scopes to the page's **"Current & Upcoming"** section (skip the embedded
+  "Opening Nights in History" block, which injects historical shows), pre-filters
+  carried-over long-runs by slug, then hydrates each production detail for its Opening Date.
+- Firm `Mon DD, YYYY` → exact; vague `Mon YYYY` → month precision; TBD/year-only → skipped.
+- Keep future openings in horizon; credits via the shared `extract_theatre_principals`.
+- `dedupe_theatre` folds IBDB/Broadway.org overlaps into the canonical Broadway.org row
+  (priority: broadway_org > ibdb > playbill_* > bam), so IBDB only adds net-new shows.
+
+For Broadway.org specifically:
 
 - Follow Broadway.org detail pages.
 - Extract and store First Preview Date, Opening Date, and Closing Date.

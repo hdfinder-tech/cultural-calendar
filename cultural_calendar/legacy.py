@@ -15,6 +15,7 @@ import json
 import os
 import re
 import sqlite3
+import time
 from dataclasses import dataclass
 from html.parser import HTMLParser
 from pathlib import Path
@@ -2023,6 +2024,115 @@ def import_tvmaze(conn: sqlite3.Connection, source: Source, aperture: str) -> in
     return count
 
 
+# IBDB (the official Internet Broadway Database) is the forward-looking Broadway source:
+# its /shows page carries the announced "Current & Upcoming" slate, including productions
+# that aren't yet on sale on Broadway.org. We scope to that section (the page also embeds an
+# "Opening Nights in History" block we must skip), hydrate each production for its opening
+# date, keep future openings in the horizon, and let dedupe_theatre fold overlaps into the
+# canonical Broadway.org rows.
+IBDB_DETAIL_BASE = "https://www.ibdb.com/broadway-production/"
+
+
+def parse_ibdb_listing(text: str) -> list[str]:
+    """Production slugs from IBDB /shows, scoped to the 'Current & Upcoming' section only."""
+    start = text.find("Current & Upcoming")
+    end = text.find("Opening Nights in History")
+    segment = text[start:end] if (start >= 0 and end > start) else (text[start:] if start >= 0 else text)
+    slugs: list[str] = []
+    seen: set[str] = set()
+    for slug in re.findall(r"/broadway-production/([a-z0-9\-]+)", segment):
+        if slug not in seen:
+            seen.add(slug)
+            slugs.append(slug)
+    return slugs
+
+
+def ibdb_title(detail: str) -> str | None:
+    m = re.search(r"<title>([^<|]+?)\s+[–-]\s+Broadway", detail)
+    return normalize_space(html.unescape(m.group(1))) if m else None
+
+
+def ibdb_show_type(detail: str) -> str:
+    m = re.search(r"<title>[^<|]+?\s+[–-]\s+Broadway\s+(Play|Musical)", detail)
+    return m.group(1) if m else "production"
+
+
+def ibdb_opening_date(detail: str) -> tuple[str, str, str] | None:
+    """Parse IBDB's Opening Date into (iso_start, precision, label). Handles a firm
+    'Mon DD, YYYY' and a vague 'Mon YYYY'; returns None for TBD / year-only / missing."""
+    m = re.search(r'xt-lable">\s*Opening Date\s*</div>\s*<div class="xt-main-title">\s*([^<]+)', detail, re.S)
+    if not m:
+        return None
+    value = normalize_space(html.unescape(m.group(1)))
+    firm = re.match(r"([A-Za-z]+)\.?\s+(\d{1,2}),?\s+(\d{4})$", value)
+    if firm:
+        month = MONTH_NUMBERS.get(firm.group(1).lower())
+        if month:
+            day = dt.date(int(firm.group(3)), month, int(firm.group(2)))
+            return day.isoformat(), "exact", format_us_date(day)
+    vague = re.match(r"([A-Za-z]+)\.?\s+(\d{4})$", value)
+    if vague:
+        month = MONTH_NUMBERS.get(vague.group(1).lower())
+        if month:
+            day = dt.date(int(vague.group(2)), month, 1)
+            return day.isoformat(), "month", f"{vague.group(1).title()} {vague.group(2)}"
+    return None
+
+
+def import_ibdb(conn: sqlite3.Connection, source: Source) -> int:
+    """Forward-looking Broadway via IBDB. Net-new announced productions land here; overlaps
+    with Broadway.org are dropped by dedupe_theatre (Broadway.org stays canonical)."""
+    text = fetch_text(source.url)
+    raw_path = save_raw(source, text)
+    count = 0
+    seen: set[str] = set()
+    for slug in parse_ibdb_listing(text):
+        # Pre-filter obvious carried-over long-runs by slug so we don't hydrate ~20 needless
+        # detail pages (and trip IBDB's rate limiter).
+        slug_title = re.sub(r"-\d+$", "", slug).replace("-", " ").strip()
+        if is_carried_over_broadway_title(slug_title):
+            continue
+        url = IBDB_DETAIL_BASE + slug
+        try:
+            detail = fetch_text(url)
+        except Exception:
+            continue
+        time.sleep(0.3)  # be polite — IBDB rate-limits rapid sequential fetches
+        title = ibdb_title(detail)
+        if not title or is_carried_over_broadway_title(title):
+            continue
+        parsed = ibdb_opening_date(detail)
+        if not parsed:
+            continue  # TBD / year-only — no firm planning date
+        date_start, precision, label = parsed
+        opening = dt.date.fromisoformat(date_start)
+        if opening < today() or opening > end_date():
+            continue
+        key = normalized_dedupe_title(title)
+        if key in seen:
+            continue
+        seen.add(key)
+        item = {
+            "title": title,
+            "category": "theatre",
+            "date_start": date_start,
+            "date_precision": precision,
+            "date_label": label,
+            "venue_or_platform": "Broadway",
+            "city": "New York",
+            "source_url": url,
+            "external_id": f"ibdb:{slug}",
+            "description": f"Broadway {ibdb_show_type(detail)}",
+            "importance_score": 18,
+            "people": extract_theatre_principals(detail) or None,
+        }
+        upsert_item(conn, source, item)
+        ensure_model_enrichment_placeholder(conn, source, item)
+        count += 1
+    record_run(conn, source, "ok", f"imported {count} upcoming Broadway productions", raw_path)
+    return count
+
+
 # Editorial cap for film: keep the top releases by TMDb popularity and credit every one.
 # The long popularity tail is where the non-US-relevant noise lives (regional digital-only
 # dumps, foreign-language titles with no real US release), so the cap doubles as a quality
@@ -2542,9 +2652,10 @@ def dedupe_theatre(conn: sqlite3.Connection) -> None:
     """
     priority = {
         "broadway_org": 0,
-        "playbill_broadway": 1,
-        "playbill_offbroadway": 2,
-        "bam_programs": 3,
+        "ibdb": 1,
+        "playbill_broadway": 2,
+        "playbill_offbroadway": 3,
+        "bam_programs": 4,
     }
     rows = conn.execute(
         "select id, source_id, title, date_start from items where category = 'theatre'"

@@ -18,6 +18,7 @@ _DEDICATED: dict[str, tuple[str, object, bool]] = {
     "tvmaze_full_schedule": ("json_api", legacy.import_tvmaze, True),
     "tmdb_movies": ("json_api", legacy.import_tmdb, False),
     "carnegie_hall": ("json_api", legacy.import_carnegie, False),
+    "ibdb": ("html", legacy.import_ibdb, False),
     "nyphil_concerts": ("json_api", legacy.import_nyphil_api, False),
     "gagosian": ("embedded_json", legacy.import_gallery_nextdata, False),
     "guggenheim": ("embedded_json", legacy.import_guggenheim, False),
@@ -41,7 +42,7 @@ EXPECTED_ROWS: dict[str, tuple[int, int]] = {
     "whitney": (0, 30), "brooklyn_museum": (0, 25), "moca_la": (0, 20), "lacma": (0, 25),
     "pace_gallery": (0, 20), "gagosian": (0, 20), "guggenheim": (0, 20), "frick": (0, 20),
     "new_museum": (0, 20), "met_opera_2026_27": (5, 40), "nycb_seasons": (5, 50),
-    "nyphil_concerts": (5, 120), "aoty_upcoming": (0, 60),
+    "nyphil_concerts": (5, 120), "aoty_upcoming": (0, 60), "ibdb": (0, 25),
 }
 
 

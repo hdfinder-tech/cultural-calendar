@@ -25,6 +25,14 @@
     "enabled": true
   },
   {
+    "id": "ibdb",
+    "name": "IBDB Upcoming Broadway",
+    "category": "theatre",
+    "type": "html",
+    "url": "https://www.ibdb.com/shows",
+    "enabled": true
+  },
+  {
     "id": "playbill_broadway",
     "name": "Playbill Broadway",
     "category": "theatre",
