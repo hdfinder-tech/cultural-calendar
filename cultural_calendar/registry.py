@@ -34,7 +34,7 @@ _HTML_TACTIC = {
 # Expected row ranges (health / silent-drift alarm). Wide enough to tolerate normal churn,
 # tight enough to catch a source that breaks to 0 or balloons.
 EXPECTED_ROWS: dict[str, tuple[int, int]] = {
-    "tmdb_movies": (40, 130), "tvmaze_full_schedule": (40, 200),
+    "tmdb_movies": (15, 52), "tvmaze_full_schedule": (40, 200),
     "carnegie_hall": (20, 220), "metacritic_albums": (40, 260),
     "broadway_org": (1, 30), "playbill_broadway": (0, 30), "playbill_offbroadway": (3, 60),
     "bam_programs": (0, 12), "met_exhibitions": (0, 25), "moma_exhibitions": (0, 30),

@@ -2023,6 +2023,14 @@ def import_tvmaze(conn: sqlite3.Connection, source: Source, aperture: str) -> in
     return count
 
 
+# Editorial cap for film: keep the top releases by TMDb popularity and credit every one.
+# The long popularity tail is where the non-US-relevant noise lives (regional digital-only
+# dumps, foreign-language titles with no real US release), so the cap doubles as a quality
+# gate. We also require an actual US theatrical/limited release (with_release_type 2|3) so a
+# culture desk sees what's reviewable here, not a worldwide release-date firehose.
+TMDB_MAX_FILMS = 50
+
+
 def import_tmdb(conn: sqlite3.Connection, source: Source) -> int:
     token = os.environ.get(source.requires_env or "")
     if not token:
@@ -2030,11 +2038,13 @@ def import_tmdb(conn: sqlite3.Connection, source: Source) -> int:
         return 0
     count = 0
     page = 1
-    while page <= 5:
+    raw_path = None
+    while page <= 5 and count < TMDB_MAX_FILMS:
         params = {
             "region": "US",
-            "primary_release_date.gte": today().isoformat(),
-            "primary_release_date.lte": end_date().isoformat(),
+            "with_release_type": "2|3",  # 2 = limited theatrical, 3 = theatrical (US)
+            "release_date.gte": today().isoformat(),
+            "release_date.lte": end_date().isoformat(),
             "sort_by": "popularity.desc",
             "page": page,
             "include_adult": "false",
@@ -2044,9 +2054,14 @@ def import_tmdb(conn: sqlite3.Connection, source: Source) -> int:
             raw_path = save_raw(source, text)
         data = json.loads(text)
         for movie in data.get("results", []):
+            if count >= TMDB_MAX_FILMS:
+                break
+            title = movie.get("title")
+            if not title:
+                continue
             release_date = movie.get("release_date")
             item = {
-                "title": movie.get("title"),
+                "title": title,
                 "date_start": release_date,
                 "date_precision": "exact" if release_date else "unknown",
                 "date_label": release_date,
@@ -2055,17 +2070,16 @@ def import_tmdb(conn: sqlite3.Connection, source: Source) -> int:
                 "description": movie.get("overview"),
                 "importance_score": int(movie.get("popularity") or 0),
             }
-            if item["title"]:
-                # Credits cost one call per film; cap at the most popular to bound runtime.
-                if count < 60 and movie.get("id"):
-                    item["people"] = tmdb_principals(movie["id"], token)
-                upsert_item(conn, source, item)
-                ensure_model_enrichment_placeholder(conn, source, item)
-                count += 1
+            # Every kept film is credit-enriched (director/writer/cast) — no popularity cutoff.
+            if movie.get("id"):
+                item["people"] = tmdb_principals(movie["id"], token)
+            upsert_item(conn, source, item)
+            ensure_model_enrichment_placeholder(conn, source, item)
+            count += 1
         if page >= int(data.get("total_pages", page)):
             break
         page += 1
-    record_run(conn, source, "ok", f"imported {count} movies", raw_path if count else None)
+    record_run(conn, source, "ok", f"imported {count} films (top by popularity, all credited)", raw_path)
     return count
 
 
