@@ -93,6 +93,11 @@ Museum pages often mix current exhibitions, ongoing collection galleries, and fu
 
 For The Met:
 
+- **CI resilience:** `metmuseum.org` sustains a 429 rate-limit on datacenter/CI IPs, so the
+  live fetch fails in GitHub Actions. `import_html_source` refreshes a committed fixture
+  (`met_capture/met-exhibitions.json`) on any successful fetch and falls back to it (future
+  shows only) when blocked — so the Met always appears. The fixture self-refreshes whenever
+  the calendar runs from a non-blocked IP (e.g. locally). `fetch_text` also retries 429s.
 - Parse only the `Upcoming Exhibitions` section from the exhibitions page.
 - Require a future start date.
 - Skip current `Through...` and `Ongoing` pages.
