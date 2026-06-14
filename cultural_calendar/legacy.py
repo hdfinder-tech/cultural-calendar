@@ -2323,6 +2323,8 @@ CATEGORY_DISPLAY = {
     "music": "Music", "opera": "Opera", "ballet": "Dance",
 }
 CATEGORY_DISPLAY_ORDER = ["film", "tv", "theatre", "art", "music", "opera", "ballet"]
+# Music splits into two editorial lanes in the render: live concerts vs. album releases.
+CONCERT_MUSIC_SOURCES = {"nyphil_concerts", "carnegie_hall"}
 
 
 def render_html(conn: sqlite3.Connection) -> None:
@@ -2402,8 +2404,8 @@ def render_html(conn: sqlite3.Connection) -> None:
             extra = f" <span class=\"v\">· {html.escape(venue)}</span>" if venue else ""
             items.append(
                 "<div class=\"entry\">"
-                f"<span class=\"d\">{html.escape(compact_date(row['date_label']))}</span> "
-                f"<a href=\"{html.escape(url)}\">{html.escape(row['title'])}</a>{extra}"
+                f"<span class=\"d\">{html.escape(compact_date(row['date_label']))}</span>"
+                f"<span class=\"body\"><a href=\"{html.escape(url)}\">{html.escape(row['title'])}</a>{extra}</span>"
                 "</div>"
             )
         return f"<div class=\"cols2\">{''.join(items)}</div>"
@@ -2424,7 +2426,15 @@ def render_html(conn: sqlite3.Connection) -> None:
             )
             head = f"<h3>{html.escape(CATEGORY_DISPLAY.get(cat, cat.title()))}</h3>"
             if cat == "music":
-                blocks.append(head + music_columns(rows))
+                # Concerts and album releases are different editorial signals — separate them.
+                concerts = [r for r in rows if r["source_id"] in CONCERT_MUSIC_SOURCES]
+                albums = [r for r in rows if r["source_id"] not in CONCERT_MUSIC_SOURCES]
+                parts = []
+                if concerts:
+                    parts.append("<h3>Music · Concerts</h3>" + music_columns(concerts))
+                if albums:
+                    parts.append("<h3>Music · Albums</h3>" + music_columns(albums))
+                blocks.append("".join(parts))
             else:
                 blocks.append(
                     head
@@ -2475,8 +2485,9 @@ def render_html(conn: sqlite3.Connection) -> None:
     td.date {{ white-space: nowrap; color: #444; width: 120px; }}
     td.credits {{ color: #333; }}
     .cols2 {{ column-count: 2; column-gap: 36px; margin-top: 8px; }}
-    .cols2 .entry {{ break-inside: avoid; padding: 4px 0; font-size: 14px; border-bottom: 1px solid #f0f0f0; }}
-    .cols2 .d {{ color: #999; display: inline-block; min-width: 92px; }}
+    .cols2 .entry {{ display: flex; gap: 10px; break-inside: avoid; padding: 4px 0; font-size: 14px; border-bottom: 1px solid #f0f0f0; }}
+    .cols2 .d {{ flex: 0 0 96px; color: #999; white-space: nowrap; }}
+    .cols2 .body {{ flex: 1; min-width: 0; }}
     .cols2 .v {{ color: #999; font-size: 12px; }}
     a {{ color: #14506e; text-decoration: none; }}
     a:hover {{ text-decoration: underline; }}
