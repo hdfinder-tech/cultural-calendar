@@ -124,16 +124,33 @@ def fetch_text(url: str, params: dict[str, Any] | None = None, headers: dict[str
     }
     if headers:
         base_headers.update(headers)
-    try:
-        response = requests.get(url, params=params, headers=base_headers, timeout=30)
-        response.raise_for_status()
-        return response.text
-    except requests.HTTPError as exc:
-        # Some sources (e.g. Metacritic) fingerprint the TLS client and 403 urllib3 while
-        # serving curl normally. Retry once via curl, which presents a browser-like TLS.
-        if exc.response is not None and exc.response.status_code == 403:
-            return fetch_with_curl(url, params, base_headers)
-        raise
+    for attempt in range(3):
+        try:
+            response = requests.get(url, params=params, headers=base_headers, timeout=30)
+            response.raise_for_status()
+            return response.text
+        except requests.HTTPError as exc:
+            status = exc.response.status_code if exc.response is not None else None
+            # Some sources (e.g. Metacritic) fingerprint the TLS client and 403 urllib3 while
+            # serving curl normally. Retry once via curl, which presents a browser-like TLS.
+            if status == 403:
+                return fetch_with_curl(url, params, base_headers)
+            # 429 = rate-limited (e.g. metmuseum.org throttles datacenter IPs like CI runners).
+            # Back off (honoring Retry-After when present) and retry, since the refresh is not
+            # time-critical. Only the last attempt is allowed to raise.
+            if status == 429 and attempt < 2:
+                time.sleep(min(_retry_after_seconds(exc.response) or 5 * (attempt + 1), 30))
+                continue
+            raise
+    raise RuntimeError(f"unreachable retry exit for {url}")  # pragma: no cover
+
+
+def _retry_after_seconds(response: "requests.Response | None") -> int | None:
+    """Parse a Retry-After header (delta-seconds form) into an int, if present and sane."""
+    if response is None:
+        return None
+    value = response.headers.get("Retry-After", "").strip()
+    return int(value) if value.isdigit() else None
 
 
 def fetch_with_curl(url: str, params: dict[str, Any] | None, headers: dict[str, str]) -> str:

@@ -38,7 +38,7 @@ EXPECTED_ROWS: dict[str, tuple[int, int]] = {
     "tmdb_movies": (15, 52), "tvmaze_full_schedule": (40, 200),
     "carnegie_hall": (20, 220), "metacritic_albums": (40, 260),
     "broadway_org": (1, 30), "playbill_broadway": (0, 30), "playbill_offbroadway": (3, 60),
-    "bam_programs": (0, 12), "met_exhibitions": (0, 25), "moma_exhibitions": (0, 30),
+    "bam_programs": (0, 12), "met_exhibitions": (1, 25), "moma_exhibitions": (0, 30),
     "whitney": (0, 30), "brooklyn_museum": (0, 25), "moca_la": (0, 20), "lacma": (0, 25),
     "pace_gallery": (0, 20), "gagosian": (0, 20), "guggenheim": (0, 20), "frick": (0, 20),
     "new_museum": (0, 20), "met_opera_2026_27": (5, 40), "nycb_seasons": (5, 50),
