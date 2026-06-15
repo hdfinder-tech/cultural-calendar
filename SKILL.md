@@ -24,7 +24,7 @@ over volume.
 - `sources.json` — the source list.
 - `tests/` — pytest suite (dates, credits/discipline, registry/health, parsers).
 - `data/` — generated: `calendar.db`, `toy-calendar.html`, `raw/`, `details/` (all gitignored).
-- `moma_capture/`, `frick_capture/`, `met_capture/`, `carnegie_capture/` — committed fixtures.
+- `moma_capture/`, `frick_capture/`, `met_capture/`, `met_opera_capture/`, `carnegie_capture/` — committed fixtures.
 - `handover.md` — fuller architecture map and session history.
 - `toy_calendar.py` — back-compat shim for `python3 -m cultural_calendar`.
 
@@ -39,7 +39,8 @@ Every source maps to one of four fetch **tactics**, dispatched from `registry.py
   Playbill, the museum framework, Met Opera, NYCB, Metacritic, LACMA).
 - `embedded_json` — fetch HTML, extract an embedded JSON blob (Gagosian Next.js, Guggenheim
   WordPress JSON, New Museum GraphQL).
-- `capture` — read a committed fixture (MoMA, Frick, Met fallback).
+- `capture` — read a committed fixture (MoMA, Frick; Met museum and Met Opera also fall back
+  to a self-refreshing fixture when their live `html` parse comes back empty on a blocked IP).
 
 **Deployment:** the repo is `culture-calendar/culture-calendar.github.io`, published at
 https://culture-calendar.github.io. A weekly GitHub Actions cron (`.github/workflows/
@@ -165,7 +166,10 @@ Tours are **deferred** (launch data is API-key-gated: Ticketmaster/Songkick/Band
 
 ## Opera and ballet
 
-- `met_opera_2026_27` — Met Opera season; season-year date normalization.
+- `met_opera_2026_27` — Met Opera season; season-year date normalization. Like the Met museum,
+  `metopera.org` serves CI/datacenter IPs a JS shell that parses to 0 links, so a good fetch
+  refreshes `met_opera_capture/met-opera-season.json` and an empty parse falls back to it — the
+  season always appears on the live page, and the fixture self-refreshes from any non-blocked IP.
 - `nycb_seasons` — New York City Ballet; keep discrete future-dated programs.
 
 ## Presentation

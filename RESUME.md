@@ -60,15 +60,19 @@ Two things that do **not** come with the clone (re-add them on the new machine):
 
 ## Capture-fixture tier (refresh by hand, occasionally)
 
-Most sources are fully scriptable and need no attention. Three art sources keep a committed
+Most sources are fully scriptable and need no attention. A few sources keep a committed
 fixture because they block scripted fetches:
 
 - **MoMA**, **Frick** — bot-protected against automated browsers; refresh via Claude-in-Chrome
   using the snippets in `cultural_calendar/capture/README.md`. Low frequency (seasonal).
-- **The Met** — `metmuseum.org` 429s datacenter/CI IPs, so it can't fetch in GitHub Actions.
-  It self-refreshes its fixture (`met_capture/met-exhibitions.json`) any time the calendar
-  runs from a non-blocked IP — i.e. **just run `python3 -m cultural_calendar` locally now and
-  then, and commit the updated fixture** to keep the Met current on the live page.
+- **The Met** (museum) — `metmuseum.org` 429s datacenter/CI IPs, so it can't fetch in GitHub
+  Actions. It self-refreshes its fixture (`met_capture/met-exhibitions.json`) any time the
+  calendar runs from a non-blocked IP — i.e. **just run `python3 -m cultural_calendar` locally
+  now and then, and commit the updated fixture** to keep the Met current on the live page.
+- **Met Opera** — same story: `metopera.org` serves CI/datacenter IPs a JS shell that parses
+  to 0 links (this is why the live page lost the whole opera season). It self-refreshes
+  `met_opera_capture/met-opera-season.json` from any non-blocked IP and falls back to it in CI,
+  so a local run + commit keeps the season on the live page.
 
 ## Recent work (this session)
 
