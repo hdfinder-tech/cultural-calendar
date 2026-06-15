@@ -2762,23 +2762,26 @@ def render_html(conn: sqlite3.Connection) -> None:
             )
         return "".join(out)
 
-    def music_columns(rows: list[sqlite3.Row]) -> str:
-        # Music entries are mostly date + title (album artist is already in the title), so
-        # a two-column list is far more compact than a near-empty table.
+    def column_list(rows: list[sqlite3.Row], compact: bool = True) -> str:
+        # A compact two-column (date + title) list — far tighter than a near-empty table.
+        # Used for music (the artist is already in the title) and for horizon ballet. compact
+        # drops the year; horizon entries keep it so "Fall 2026" vs "Winter 2027" stays clear.
         items = []
         for row in rows:
             url = row["source_url"] or "#"
             venue = row["venue_or_platform"]
             extra = f" <span class=\"v\">· {html.escape(venue)}</span>" if venue else ""
+            shown_date = compact_date(row['date_label']) if compact else date_display(row['date_label'])
             items.append(
                 "<div class=\"entry\">"
-                f"<span class=\"d\">{html.escape(compact_date(row['date_label']))}</span>"
+                f"<span class=\"d\">{html.escape(shown_date)}</span>"
                 f"<span class=\"body\"><a href=\"{html.escape(url)}\">{html.escape(row['title'])}</a>{extra}</span>"
                 "</div>"
             )
         return f"<div class=\"cols2\">{''.join(items)}</div>"
 
-    def category_blocks(by_cat: dict[str, list[sqlite3.Row]]) -> str:
+    def category_blocks(by_cat: dict[str, list[sqlite3.Row]],
+                        compact_cats: frozenset = frozenset()) -> str:
         blocks = []
         ordered = [c for c in CATEGORY_DISPLAY_ORDER if c in by_cat] + [
             c for c in by_cat if c not in CATEGORY_DISPLAY_ORDER
@@ -2799,10 +2802,14 @@ def render_html(conn: sqlite3.Connection) -> None:
                 albums = [r for r in rows if r["source_id"] not in CONCERT_MUSIC_SOURCES]
                 parts = []
                 if concerts:
-                    parts.append("<h3>Music · Concerts</h3>" + music_columns(concerts))
+                    parts.append("<h3>Music · Concerts</h3>" + column_list(concerts))
                 if albums:
-                    parts.append("<h3>Music · Albums</h3>" + music_columns(albums))
+                    parts.append("<h3>Music · Albums</h3>" + column_list(albums))
                 blocks.append("".join(parts))
+            elif cat in compact_cats:
+                # Short label+title entries (e.g. horizon ballet seasons) read better as a
+                # two-column list than a sparse four-column table; keep the full season label.
+                blocks.append(head + column_list(rows, compact=False))
             else:
                 blocks.append(
                     head
@@ -2827,7 +2834,7 @@ def render_html(conn: sqlite3.Connection) -> None:
     if horizon_by_cat:
         horizon_html = (
             "<h2>On the horizon <span class=\"sub\">(announced, dates still vague)</span></h2>"
-            + category_blocks(horizon_by_cat)
+            + category_blocks(horizon_by_cat, compact_cats=frozenset({"ballet"}))
         )
 
     run_html = "".join(
