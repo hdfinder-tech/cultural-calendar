@@ -1483,7 +1483,7 @@ def parse_met_opera(source: Source, text: str, limit: int = 80) -> list[dict[str
                 "date_start": opening.isoformat() if in_horizon else None,
                 "date_label": normalize_space(date_label) if date_label else None,
                 "date_precision": "exact" if in_horizon else ("exact_or_range" if date_label else "unknown"),
-                "venue_or_platform": "Met Opera",
+                "venue_or_platform": "Metropolitan Opera",
                 "city": "New York",
                 "source_url": url,
                 "external_id": url,
