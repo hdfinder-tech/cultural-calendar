@@ -1,0 +1,32 @@
+{
+  "capturedAt": "2026-06-16",
+  "note": "Tate Britain, London. Hand-maintained capture fixture. Refresh each season from tate.org.uk/visit/tate-britain. Future-opening only.",
+  "items": [
+    {
+      "title": "The 90s: Art and Fashion",
+      "category": "art",
+      "date_start": "2026-10-08",
+      "date_label": "Oct 8, 2026 – Feb 14, 2027",
+      "date_precision": "exact",
+      "venue_or_platform": "Tate Britain",
+      "city": "London",
+      "source_url": "https://www.tate.org.uk/visit/tate-britain",
+      "external_id": "tate-britain:the-90s-art-and-fashion",
+      "description": "Art, photography, fashion, and British visual culture in the 1990s — guest-curated by Edward Enninful; nearly seventy artists, photographers, and designers",
+      "importance_score": 16
+    },
+    {
+      "title": "Vanessa Bell & Duncan Grant: Inside Bloomsbury",
+      "category": "art",
+      "date_start": "2026-11-12",
+      "date_label": "Nov 12, 2026 – Apr 11, 2027",
+      "date_precision": "exact",
+      "venue_or_platform": "Tate Britain",
+      "city": "London",
+      "source_url": "https://www.tate.org.uk/visit/tate-britain",
+      "external_id": "tate-britain:vanessa-bell-duncan-grant",
+      "description": "300+ works — portraits, still lifes, landscapes, decorative art, furniture, ceramics, textiles, and material connected to Charleston",
+      "importance_score": 15
+    }
+  ]
+}

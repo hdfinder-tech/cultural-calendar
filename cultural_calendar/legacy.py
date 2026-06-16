@@ -30,7 +30,7 @@ import requests
 # Migrated to the cultural_calendar package (behavior-preserving re-org); re-exported here
 # so this module stays runnable during the migration.
 from cultural_calendar.core.config import *  # noqa: F401,F403
-from cultural_calendar.core.config import ROOT, DATA_DIR, RAW_DIR, DETAIL_DIR, DB_PATH, SOURCES_PATH, HTML_PATH, MOMA_CAPTURE_LINKS, MET_CAPTURE, MET_OPERA_CAPTURE, ARMORY_CAPTURE, TATE_CAPTURE, NPG_CAPTURE, FLV_CAPTURE, GRAND_PALAIS_CAPTURE, POMPIDOU_CAPTURE, VA_CAPTURE, MAM_CAPTURE, CARNEGIE_CAPTURE, FRICK_CAPTURE, MONTH_PATTERN, MONTH_RE, MONTH_NUMBERS, Source, today, end_date, load_sources
+from cultural_calendar.core.config import ROOT, DATA_DIR, RAW_DIR, DETAIL_DIR, DB_PATH, SOURCES_PATH, HTML_PATH, MOMA_CAPTURE_LINKS, MET_CAPTURE, MET_OPERA_CAPTURE, ARMORY_CAPTURE, TATE_CAPTURE, TATE_BRITAIN_CAPTURE, NPG_CAPTURE, FLV_CAPTURE, GRAND_PALAIS_CAPTURE, POMPIDOU_CAPTURE, VA_CAPTURE, MAM_CAPTURE, CARNEGIE_CAPTURE, FRICK_CAPTURE, MONTH_PATTERN, MONTH_RE, MONTH_NUMBERS, Source, today, end_date, load_sources
 from cultural_calendar.core.html import normalize_space, strip_tags, LinkTextParser, ArticleParser, MetaParser  # noqa: F401
 
 
@@ -2508,6 +2508,7 @@ def load_capture_fixture(path: Path) -> list[dict[str, Any]]:
 CAPTURE_FIXTURE_SOURCES = {
     "armory": ARMORY_CAPTURE,
     "tate_modern": TATE_CAPTURE,
+    "tate_britain": TATE_BRITAIN_CAPTURE,
     "npg_london": NPG_CAPTURE,
     "fondation_lv": FLV_CAPTURE,
     "grand_palais": GRAND_PALAIS_CAPTURE,

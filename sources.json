@@ -217,6 +217,14 @@
     "enabled": true
   },
   {
+    "id": "tate_britain",
+    "name": "Tate Britain",
+    "category": "art",
+    "type": "html",
+    "url": "https://www.tate.org.uk/visit/tate-britain",
+    "enabled": true
+  },
+  {
     "id": "npg_london",
     "name": "National Portrait Gallery",
     "category": "art",

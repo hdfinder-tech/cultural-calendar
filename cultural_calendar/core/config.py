@@ -27,6 +27,7 @@ GRAND_PALAIS_CAPTURE = ROOT / "grand_palais_capture" / "grand-palais-exhibitions
 POMPIDOU_CAPTURE = ROOT / "pompidou_capture" / "pompidou-exhibitions.json"
 VA_CAPTURE = ROOT / "va_capture" / "va-exhibitions.json"
 MAM_CAPTURE = ROOT / "mam_capture" / "mam-paris-exhibitions.json"
+TATE_BRITAIN_CAPTURE = ROOT / "tate_britain_capture" / "tate-britain-exhibitions.json"
 CARNEGIE_CAPTURE = ROOT / "carnegie_capture" / "carnegie-events.json"
 FRICK_CAPTURE = ROOT / "frick_capture" / "frick-exhibitions.json"
 

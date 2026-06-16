@@ -34,6 +34,7 @@ _HTML_TACTIC = {
     "frick": "capture",
     "armory": "capture",
     "tate_modern": "capture",
+    "tate_britain": "capture",
     "npg_london": "capture",
     "fondation_lv": "capture",
     "grand_palais": "capture",
@@ -53,7 +54,7 @@ EXPECTED_ROWS: dict[str, tuple[int, int]] = {
     "pace_gallery": (0, 20), "gagosian": (0, 20), "guggenheim": (0, 20), "frick": (0, 20),
     "new_museum": (0, 20), "met_opera_2026_27": (5, 40), "nycb_seasons": (5, 50),
     "nyphil_concerts": (5, 120), "aoty_upcoming": (0, 60), "ibdb": (0, 25),
-    "pac_nyc": (1, 25), "the_shed": (1, 25), "armory": (0, 30), "tate_modern": (0, 20),
+    "pac_nyc": (1, 25), "the_shed": (1, 25), "armory": (0, 30), "tate_modern": (0, 20), "tate_britain": (0, 20),
     "npg_london": (0, 20), "fondation_lv": (0, 20), "grand_palais": (0, 20),
     "centre_pompidou": (0, 20), "va_london": (0, 20), "mam_paris": (0, 20),
 }
