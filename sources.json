@@ -217,6 +217,22 @@
     "enabled": true
   },
   {
+    "id": "npg_london",
+    "name": "National Portrait Gallery",
+    "category": "art",
+    "type": "html",
+    "url": "https://www.npg.org.uk/whatson/exhibitions",
+    "enabled": true
+  },
+  {
+    "id": "fondation_lv",
+    "name": "Fondation Louis Vuitton",
+    "category": "art",
+    "type": "html",
+    "url": "https://www.fondationlouisvuitton.fr/en/exhibitions",
+    "enabled": true
+  },
+  {
     "id": "nycb_seasons",
     "name": "New York City Ballet Seasons",
     "category": "ballet",

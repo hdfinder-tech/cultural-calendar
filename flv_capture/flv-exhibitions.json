@@ -1,0 +1,19 @@
+{
+  "capturedAt": "2026-06-16",
+  "note": "Fondation Louis Vuitton, Paris. Hand-maintained capture fixture (French-language site). Refresh each season from fondationlouisvuitton.fr/en/exhibitions. Future-opening only.",
+  "items": [
+    {
+      "title": "Gustave Fayet, Collector – Designer: Icons of Modern Art",
+      "category": "art",
+      "date_start": "2026-10-09",
+      "date_label": "Oct 9, 2026 – Mar 8, 2027",
+      "date_precision": "exact",
+      "venue_or_platform": "Fondation Louis Vuitton",
+      "city": "Paris",
+      "source_url": "https://www.fondationlouisvuitton.fr/en/exhibitions",
+      "external_id": "fondation-lv:gustave-fayet",
+      "description": "Fayet as collector and designer — 250+ works from his dispersed collection plus his own creations: Van Gogh, Gauguin, Redon, Degas, Cézanne, Toulouse-Lautrec, Renoir, Morisot, Signac, Bonnard, Vuillard, Matisse",
+      "importance_score": 16
+    }
+  ]
+}

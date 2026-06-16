@@ -1,0 +1,45 @@
+{
+  "capturedAt": "2026-06-16",
+  "note": "National Portrait Gallery, London. Hand-maintained capture fixture. Refresh each season from npg.org.uk/whatson/exhibitions. Future-opening only; the loader drops events whose opening has passed (e.g. the already-open 'Marilyn Monroe: A Portrait', Jun 4 2026).",
+  "items": [
+    {
+      "title": "Herbert Smith Freehills Kramer Portrait Award 2026",
+      "category": "art",
+      "date_start": "2026-06-25",
+      "date_label": "Jun 25 – Oct 7, 2026",
+      "date_precision": "exact",
+      "venue_or_platform": "National Portrait Gallery",
+      "city": "London",
+      "source_url": "https://www.npg.org.uk/whatson/exhibitions",
+      "external_id": "npg-london:portrait-award-2026",
+      "description": "The annual contemporary portrait-painting award (free admission). 2026 shortlist: Chloe Cox, Marc Dalessio, Joel Nichols, Michael Slusakowicz",
+      "importance_score": 12
+    },
+    {
+      "title": "Tim Walker's Fairyland: Love and Legends",
+      "category": "art",
+      "date_start": "2026-10-08",
+      "date_label": "Oct 8, 2026 – Feb 7, 2027",
+      "date_precision": "exact",
+      "venue_or_platform": "National Portrait Gallery",
+      "city": "London",
+      "source_url": "https://www.npg.org.uk/whatson/exhibitions",
+      "external_id": "npg-london:tim-walker-fairyland",
+      "description": "Tim Walker on queer identity, community, and love — five years of portraits of activists, performers, artists, and writers",
+      "importance_score": 15
+    },
+    {
+      "title": "Winston Taylor Photo Portrait Prize 2026",
+      "category": "art",
+      "date_start": "2026-11-05",
+      "date_label": "Nov 5, 2026 – Jan 17, 2027",
+      "date_precision": "exact",
+      "venue_or_platform": "National Portrait Gallery",
+      "city": "London",
+      "source_url": "https://www.npg.org.uk/whatson/exhibitions",
+      "external_id": "npg-london:photo-portrait-prize-2026",
+      "description": "The renamed Taylor Wessing Photo Portrait Prize — contemporary photographic portraiture by emerging and established photographers",
+      "importance_score": 13
+    }
+  ]
+}
