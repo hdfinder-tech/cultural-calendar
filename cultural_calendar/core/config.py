@@ -20,6 +20,7 @@ MOMA_CAPTURE_LINKS = ROOT / "moma_capture" / "moma-exhibition-links.json"
 MET_CAPTURE = ROOT / "met_capture" / "met-exhibitions.json"
 MET_OPERA_CAPTURE = ROOT / "met_opera_capture" / "met-opera-season.json"
 ARMORY_CAPTURE = ROOT / "armory_capture" / "armory-events.json"
+TATE_CAPTURE = ROOT / "tate_capture" / "tate-modern-exhibitions.json"
 CARNEGIE_CAPTURE = ROOT / "carnegie_capture" / "carnegie-events.json"
 FRICK_CAPTURE = ROOT / "frick_capture" / "frick-exhibitions.json"
 

@@ -209,6 +209,14 @@
     "enabled": true
   },
   {
+    "id": "tate_modern",
+    "name": "Tate Modern",
+    "category": "art",
+    "type": "html",
+    "url": "https://www.tate.org.uk/visit/tate-modern",
+    "enabled": true
+  },
+  {
     "id": "nycb_seasons",
     "name": "New York City Ballet Seasons",
     "category": "ballet",

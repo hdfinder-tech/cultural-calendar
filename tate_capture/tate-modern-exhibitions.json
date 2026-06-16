@@ -1,0 +1,58 @@
+{
+  "capturedAt": "2026-06-16",
+  "note": "Tate Modern exhibitions/commissions. Hand-maintained capture fixture (tate.org.uk resists the project's scripted fetch). Refresh each season from tate.org.uk/visit/tate-modern. Future-opening only; the loader drops events whose opening has passed.",
+  "items": [
+    {
+      "title": "Frida: The Making of an Icon",
+      "category": "art",
+      "date_start": "2026-06-25",
+      "date_label": "Jun 25, 2026 – Jan 3, 2027",
+      "date_precision": "exact",
+      "venue_or_platform": "Tate Modern",
+      "city": "London",
+      "source_url": "https://www.tate.org.uk/visit/tate-modern",
+      "external_id": "tate-modern:frida-the-making-of-an-icon",
+      "description": "Frida Kahlo as artist, political figure, feminist icon, and global image",
+      "importance_score": 17
+    },
+    {
+      "title": "Ana Mendieta",
+      "category": "art",
+      "date_start": "2026-07-15",
+      "date_label": "Jul 15, 2026 – Jan 17, 2027",
+      "date_precision": "exact",
+      "venue_or_platform": "Tate Modern",
+      "city": "London",
+      "source_url": "https://www.tate.org.uk/visit/tate-modern",
+      "external_id": "tate-modern:ana-mendieta",
+      "description": "First major UK exhibition in over a decade — films, paintings, sculpture, and work previously unseen in the UK",
+      "importance_score": 15
+    },
+    {
+      "title": "Tarek Atoui",
+      "category": "art",
+      "date_start": "2026-10-13",
+      "date_label": "Oct 13, 2026 – Apr 11, 2027",
+      "date_precision": "exact",
+      "venue_or_platform": "Tate Modern",
+      "city": "London",
+      "source_url": "https://www.tate.org.uk/visit/tate-modern",
+      "external_id": "tate-modern:hyundai-commission-tarek-atoui",
+      "description": "Hyundai Commission · Turbine Hall · site-specific work by the Lebanese-French artist and composer",
+      "importance_score": 15
+    },
+    {
+      "title": "Light and Magic: The Birth of Art Photography",
+      "category": "art",
+      "date_start": "2026-10-14",
+      "date_label": "Oct 14, 2026 – Feb 21, 2027",
+      "date_precision": "exact",
+      "venue_or_platform": "Tate Modern",
+      "city": "London",
+      "source_url": "https://www.tate.org.uk/visit/tate-modern",
+      "external_id": "tate-modern:light-and-magic",
+      "description": "Pictorialism and early art photography, with artists from several continents",
+      "importance_score": 13
+    }
+  ]
+}
