@@ -2920,29 +2920,44 @@ def render_html(conn: sqlite3.Connection) -> None:
 
     def calendar_view(rows: list[sqlite3.Row]) -> str:
         # Day-by-day: each opening/premiere day is a heading with that day's entries from every
-        # category beneath it (category label + title + venue/credits), in chronological order.
+        # category beneath it. Album releases (the Metacritic feed — low signal, often many in a
+        # day) are run into one comma-separated line rather than a line each.
+        def is_album(r: sqlite3.Row) -> bool:
+            return r["category"] == "music" and r["source_id"] not in CONCERT_MUSIC_SOURCES
+
+        def cal_entry(r: sqlite3.Row) -> str:
+            cat = CATEGORY_DISPLAY.get(r["category"], r["category"].title())
+            url = r["source_url"] or "#"
+            meta = " · ".join(x for x in (r["venue_or_platform"], format_credits(r["people_json"])) if x)
+            meta_html = f" <span class=\"cal-meta\">· {html.escape(meta)}</span>" if meta else ""
+            return (
+                "<div class=\"cal-entry\">"
+                f"<span class=\"cal-cat\">{html.escape(cat)}</span>"
+                f"<span class=\"cal-body\"><a href=\"{html.escape(url)}\">{html.escape(r['title'])}</a>{meta_html}</span>"
+                "</div>"
+            )
+
         by_day: dict[str, list[sqlite3.Row]] = {}
         for row in rows:
             by_day.setdefault(row["date_start"], []).append(row)
         days = []
         for day in sorted(by_day):
             heading = dt.date.fromisoformat(day).strftime("%A, %B %-d, %Y")
-            entries = sorted(by_day[day], key=lambda r: (
+            albums = sorted((r for r in by_day[day] if is_album(r)), key=lambda r: r["title"].lower())
+            others = sorted((r for r in by_day[day] if not is_album(r)), key=lambda r: (
                 CATEGORY_DISPLAY_ORDER.index(r["category"]) if r["category"] in CATEGORY_DISPLAY_ORDER else 99,
                 -relevance(r["source_id"], r["importance_score"] or 0),
                 r["title"],
             ))
-            rendered = []
-            for r in entries:
-                cat = CATEGORY_DISPLAY.get(r["category"], r["category"].title())
-                url = r["source_url"] or "#"
-                meta = " · ".join(x for x in (r["venue_or_platform"], format_credits(r["people_json"])) if x)
-                meta_html = f" <span class=\"cal-meta\">· {html.escape(meta)}</span>" if meta else ""
+            rendered = [cal_entry(r) for r in others]
+            if albums:
+                links = ", ".join(
+                    f"<a href=\"{html.escape(r['source_url'] or '#')}\">{html.escape(r['title'])}</a>"
+                    for r in albums
+                )
                 rendered.append(
-                    "<div class=\"cal-entry\">"
-                    f"<span class=\"cal-cat\">{html.escape(cat)}</span>"
-                    f"<span class=\"cal-body\"><a href=\"{html.escape(url)}\">{html.escape(r['title'])}</a>{meta_html}</span>"
-                    "</div>"
+                    "<div class=\"cal-entry\"><span class=\"cal-cat\">Albums</span>"
+                    f"<span class=\"cal-body\">{links}</span></div>"
                 )
             days.append(f"<div class=\"cal-day\"><div class=\"cal-date\">{heading}</div>{''.join(rendered)}</div>")
         return "".join(days)
@@ -3041,15 +3056,19 @@ def render_html(conn: sqlite3.Connection) -> None:
 
 def normalized_dedupe_title(title: str) -> str:
     normalized = normalize_space(title).lower()
-    return re.sub(r"\s*:\s*(?:a new musical|the musical).*$", "", normalized)
+    # Drop a trailing subtitle so the same show collapses across sources, e.g. a venue feed's
+    # "Giulia" and Playbill's "Giulia: The Poison Queen of Palermo" -> "giulia".
+    return re.sub(r"\s*:\s.*$", "", normalized)
 
 
 def dedupe_theatre(conn: sqlite3.Connection) -> None:
     """Drop the same theatre production arriving from more than one source.
 
     Broadway.org is canonical for opening dates (SKILL.md), so it wins, then Playbill
-    Broadway, then the Off-Broadway / BAM feeds. Keyed on normalized title + start date
-    so revivals on different dates are kept as distinct rows.
+    Broadway, then the Off-Broadway aggregator, then the single-venue feeds. Playbill carries
+    fuller titles + credits, so it outranks the venue feeds (BAM, PAC, The Shed, Armory) when
+    they list the same production. Keyed on normalized title + start date, so revivals on
+    different dates stay distinct.
     """
     priority = {
         "broadway_org": 0,
@@ -3057,6 +3076,9 @@ def dedupe_theatre(conn: sqlite3.Connection) -> None:
         "playbill_broadway": 2,
         "playbill_offbroadway": 3,
         "bam_programs": 4,
+        "pac_nyc": 5,
+        "the_shed": 6,
+        "armory": 7,
     }
     rows = conn.execute(
         "select id, source_id, title, date_start from items where category = 'theatre'"
