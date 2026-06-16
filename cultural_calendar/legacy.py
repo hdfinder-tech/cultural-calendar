@@ -30,7 +30,7 @@ import requests
 # Migrated to the cultural_calendar package (behavior-preserving re-org); re-exported here
 # so this module stays runnable during the migration.
 from cultural_calendar.core.config import *  # noqa: F401,F403
-from cultural_calendar.core.config import ROOT, DATA_DIR, RAW_DIR, DETAIL_DIR, DB_PATH, SOURCES_PATH, HTML_PATH, MOMA_CAPTURE_LINKS, MET_CAPTURE, MET_OPERA_CAPTURE, CARNEGIE_CAPTURE, FRICK_CAPTURE, MONTH_PATTERN, MONTH_RE, MONTH_NUMBERS, Source, today, end_date, load_sources
+from cultural_calendar.core.config import ROOT, DATA_DIR, RAW_DIR, DETAIL_DIR, DB_PATH, SOURCES_PATH, HTML_PATH, MOMA_CAPTURE_LINKS, MET_CAPTURE, MET_OPERA_CAPTURE, ARMORY_CAPTURE, CARNEGIE_CAPTURE, FRICK_CAPTURE, MONTH_PATTERN, MONTH_RE, MONTH_NUMBERS, Source, today, end_date, load_sources
 from cultural_calendar.core.html import normalize_space, strip_tags, LinkTextParser, ArticleParser, MetaParser  # noqa: F401
 
 
@@ -2513,6 +2513,16 @@ def import_html_source(conn: sqlite3.Connection, source: Source) -> int:
             ensure_model_enrichment_placeholder(conn, source, item)
         record_run(conn, source, "ok", f"parsed {len(items)} from browser capture")
         return len(items)
+    if source.id == "armory":
+        # Park Avenue Armory is Cloudflare-bot-walled (no scriptable path, blocked in CI too),
+        # so it's a hand-maintained capture fixture refreshed each season. Horizon filtering
+        # drops events whose opening has passed.
+        items = load_capture_fixture(ARMORY_CAPTURE)
+        for item in items:
+            upsert_item(conn, source, item)
+            ensure_model_enrichment_placeholder(conn, source, item)
+        record_run(conn, source, "ok", f"parsed {len(items)} from committed fixture")
+        return len(items)
     raw_path = None
     try:
         text = fetch_text(source.url)
@@ -2777,7 +2787,7 @@ CATEGORY_DISPLAY = {
 CATEGORY_DISPLAY_ORDER = ["film", "tv", "theatre", "art", "music", "opera", "ballet"]
 # Music splits into two editorial lanes in the render: live concerts vs. album releases.
 # PAC's music-genre events are live concerts, so they render in the Concerts lane too.
-CONCERT_MUSIC_SOURCES = {"nyphil_concerts", "carnegie_hall", "pac_nyc", "the_shed"}
+CONCERT_MUSIC_SOURCES = {"nyphil_concerts", "carnegie_hall", "pac_nyc", "the_shed", "armory"}
 
 
 def render_html(conn: sqlite3.Connection) -> None:

@@ -19,6 +19,7 @@ HTML_PATH = DATA_DIR / "toy-calendar.html"
 MOMA_CAPTURE_LINKS = ROOT / "moma_capture" / "moma-exhibition-links.json"
 MET_CAPTURE = ROOT / "met_capture" / "met-exhibitions.json"
 MET_OPERA_CAPTURE = ROOT / "met_opera_capture" / "met-opera-season.json"
+ARMORY_CAPTURE = ROOT / "armory_capture" / "armory-events.json"
 CARNEGIE_CAPTURE = ROOT / "carnegie_capture" / "carnegie-events.json"
 FRICK_CAPTURE = ROOT / "frick_capture" / "frick-exhibitions.json"
 

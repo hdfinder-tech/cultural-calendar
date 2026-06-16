@@ -32,6 +32,7 @@ _HTML_TACTIC = {
     "new_museum": "embedded_json",
     "moma_exhibitions": "capture",
     "frick": "capture",
+    "armory": "capture",
 }
 
 # Expected row ranges (health / silent-drift alarm). Wide enough to tolerate normal churn,
@@ -45,7 +46,7 @@ EXPECTED_ROWS: dict[str, tuple[int, int]] = {
     "pace_gallery": (0, 20), "gagosian": (0, 20), "guggenheim": (0, 20), "frick": (0, 20),
     "new_museum": (0, 20), "met_opera_2026_27": (5, 40), "nycb_seasons": (5, 50),
     "nyphil_concerts": (5, 120), "aoty_upcoming": (0, 60), "ibdb": (0, 25),
-    "pac_nyc": (1, 25), "the_shed": (1, 25),
+    "pac_nyc": (1, 25), "the_shed": (1, 25), "armory": (0, 30),
 }
 
 

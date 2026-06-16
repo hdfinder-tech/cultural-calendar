@@ -39,8 +39,11 @@ Every source maps to one of four fetch **tactics**, dispatched from `registry.py
   Playbill, the museum framework, Met Opera, NYCB, Metacritic, LACMA).
 - `embedded_json` — fetch HTML, extract an embedded JSON blob (Gagosian Next.js, Guggenheim
   WordPress JSON, New Museum GraphQL).
-- `capture` — read a committed fixture (MoMA, Frick; Met museum and Met Opera also fall back
-  to a self-refreshing fixture when their live `html` parse comes back empty on a blocked IP).
+- `capture` — read a committed fixture (MoMA, Frick, Park Avenue Armory; Met museum and Met
+  Opera also fall back to a self-refreshing fixture when their live `html` parse comes back
+  empty on a blocked IP). The Armory is Cloudflare-bot-walled with no scriptable path at all,
+  so its `armory_capture/armory-events.json` is hand-maintained — refresh each season from the
+  live current-season page via a browser.
 
 **Deployment:** the repo is `culture-calendar/culture-calendar.github.io`, published at
 https://culture-calendar.github.io. A weekly GitHub Actions cron (`.github/workflows/

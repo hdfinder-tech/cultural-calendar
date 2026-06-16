@@ -201,6 +201,14 @@
     "enabled": true
   },
   {
+    "id": "armory",
+    "name": "Park Avenue Armory",
+    "category": "theatre",
+    "type": "html",
+    "url": "https://www.armoryonpark.org/season-events/current-season/",
+    "enabled": true
+  },
+  {
     "id": "nycb_seasons",
     "name": "New York City Ballet Seasons",
     "category": "ballet",
