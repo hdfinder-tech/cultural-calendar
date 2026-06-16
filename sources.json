@@ -273,6 +273,14 @@
     "enabled": true
   },
   {
+    "id": "serpentine",
+    "name": "Serpentine Galleries",
+    "category": "art",
+    "type": "html",
+    "url": "https://www.serpentinegalleries.org/whats-on/",
+    "enabled": true
+  },
+  {
     "id": "nycb_seasons",
     "name": "New York City Ballet Seasons",
     "category": "ballet",

@@ -28,6 +28,7 @@ POMPIDOU_CAPTURE = ROOT / "pompidou_capture" / "pompidou-exhibitions.json"
 VA_CAPTURE = ROOT / "va_capture" / "va-exhibitions.json"
 MAM_CAPTURE = ROOT / "mam_capture" / "mam-paris-exhibitions.json"
 TATE_BRITAIN_CAPTURE = ROOT / "tate_britain_capture" / "tate-britain-exhibitions.json"
+SERPENTINE_CAPTURE = ROOT / "serpentine_capture" / "serpentine-exhibitions.json"
 CARNEGIE_CAPTURE = ROOT / "carnegie_capture" / "carnegie-events.json"
 FRICK_CAPTURE = ROOT / "frick_capture" / "frick-exhibitions.json"
 

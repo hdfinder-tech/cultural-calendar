@@ -24,7 +24,9 @@ over volume.
 - `sources.json` — the source list.
 - `tests/` — pytest suite (dates, credits/discipline, registry/health, parsers).
 - `data/` — generated: `calendar.db`, `toy-calendar.html`, `raw/`, `details/` (all gitignored).
-- `moma_capture/`, `frick_capture/`, `met_capture/`, `met_opera_capture/`, `carnegie_capture/` — committed fixtures.
+- `moma_capture/`, `frick_capture/`, `met_capture/`, `met_opera_capture/`, `carnegie_capture/`,
+  and per-venue capture fixtures (`armory_capture/`, `tate_capture/`, `serpentine_capture/`,
+  `grand_palais_capture/`, …) — committed fixtures; see `CAPTURE_FIXTURE_SOURCES`.
 - `handover.md` — fuller architecture map and session history.
 - `toy_calendar.py` — back-compat shim for `python3 -m cultural_calendar`.
 
@@ -144,7 +146,12 @@ section-aware, and list **newly-opening shows only** (never currently-on-view).
   horizon items. **Galleries are NY-only** (Pace, Gagosian filter to New York).
   - Wired: Met, MoMA, Whitney, Brooklyn Museum, MOCA, LACMA, Pace, Gagosian, Guggenheim,
     New Museum, Frick.
-  - Not yet wired: Zwirner and Hauser & Wirth (Next.js RSC streaming), Tate, Marian Goodman.
+  - Not yet wired (scriptable): Zwirner and Hauser & Wirth (Next.js RSC streaming), Marian Goodman.
+- **International art (London/Paris)** — a deliberate scope expansion beyond NY. These venues
+  are JS/French-language/bot-walled with no scriptable path, so they're hand-maintained capture
+  fixtures (see `CAPTURE_FIXTURE_SOURCES`): Tate Modern, Tate Britain, Serpentine, V&A, National
+  Portrait Gallery (London); Centre Pompidou (off-site "Constellation"), Grand Palais, Musée
+  d'Art Moderne de Paris, Fondation Louis Vuitton (Paris). Refresh each season by hand.
 
 Name exhibitions for the artist/subject; we generally don't care about the curator.
 
