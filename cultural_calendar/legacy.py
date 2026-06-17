@@ -3427,6 +3427,16 @@ def render_html(conn: sqlite3.Connection) -> None:
         f"<li>{html.escape(r['source_name'])}: {html.escape(r['status'])} — {html.escape(r['message'] or '')}</li>"
         for r in run_rows
     )
+    # Health banner: surface sources serving stale/cached data or skipped, so degradation is
+    # visible at the top of the page, not buried in the Source-runs details.
+    degraded = [r["source_name"] for r in run_rows if r["status"] in ("stale", "skipped", "error")]
+    health_html = ""
+    if degraded:
+        shown = ", ".join(html.escape(n) for n in degraded[:6]) + (f" +{len(degraded) - 6}" if len(degraded) > 6 else "")
+        health_html = (
+            f"<p class=\"health\">⚠ {len(degraded)} of {len(run_rows)} sources are stale or "
+            f"unavailable (served from last-good cache where possible): {shown}.</p>"
+        )
 
     page = f"""<!doctype html>
 <html lang="en">
@@ -3446,6 +3456,8 @@ def render_html(conn: sqlite3.Connection) -> None:
     h3 {{ font-size: 12px; font-weight: 400; text-transform: uppercase; letter-spacing: .14em; color: #9a7c44; margin: 22px 0 2px; }}
     .sub {{ color: #8c8675; font-weight: 400; font-size: 14px; }}
     p.lede {{ color: #6d685d; font-size: 14px; margin: 0 0 8px; }}
+    p.health {{ color: #8a5a2b; background: #faf3e6; border: 1px solid #e7d6b8; border-radius: 6px;
+      padding: 7px 12px; font-size: 13px; margin: 0 0 14px; }}
     table {{ border-collapse: collapse; width: 100%; margin-top: 6px; }}
     th, td {{ border-bottom: 1px solid rgba(110,100,75,.12); padding: 7px 10px; text-align: left; vertical-align: top; font-size: 15px; }}
     th {{ font-size: 11px; font-weight: 400; text-transform: uppercase; letter-spacing: .08em; color: #8c8675; border-bottom: 1px solid rgba(90,84,66,.28); }}
@@ -3481,7 +3493,8 @@ def render_html(conn: sqlite3.Connection) -> None:
 <body>
   <main class="sheet">
   <h1>Cultural Calendar</h1>
-  <p class="lede">Significant releases, openings, premieres, exhibitions, and performances through 2026. Generated {dt.datetime.now().strftime("%Y-%m-%d %H:%M")}.</p>
+  <p class="lede">Significant releases, openings, premieres, exhibitions, and performances on the editorial horizon. Generated {dt.datetime.now().strftime("%Y-%m-%d %H:%M")}.</p>
+  {health_html}
   <input id="view-editorial" class="vtoggle" type="radio" name="view" checked>
   <input id="view-calendar" class="vtoggle" type="radio" name="view">
   <div class="viewtoggle"><label for="view-editorial">Editorial</label><label for="view-calendar">Calendar</label></div>
