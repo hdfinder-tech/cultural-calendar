@@ -211,6 +211,28 @@ def merge_by_title(base: list[dict[str, Any]], extra: list[dict[str, Any]]) -> l
     return out
 
 
+CACHE_MISS_LIMIT = 2  # retire a cache-only row after this many consecutive complete-fetch misses
+
+
+def age_cache(live: list[dict[str, Any]], cache: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Merge a COMPLETE clean fetch with its cache, live-first, aging out stale cache-only rows.
+
+    A row the live fetch no longer lists (cancelled, renamed, postponed out, or corrected) is
+    kept for CACHE_MISS_LIMIT-1 misses, then dropped — so the cache can't immortalize a row a
+    clean source has retired, while a single blocked/partial run can't wipe it. Live rows reset
+    the counter. The per-row `_misses` counter rides in the cache JSON and is ignored on upsert.
+    Only call on a complete clean fetch (a single-page listing, or all sources succeeded)."""
+    live_keys = {normalized_dedupe_title(i["title"]) for i in live}
+    out = [dict({k: v for k, v in i.items() if k != "_misses"}, _misses=0) for i in live]
+    for row in cache:
+        if normalized_dedupe_title(row["title"]) in live_keys:
+            continue  # superseded by a fresh live row
+        misses = row.get("_misses", 0) + 1
+        if misses < CACHE_MISS_LIMIT:
+            out.append(dict(row, _misses=misses))  # still within grace; keep but age
+    return out
+
+
 def save_raw(source: Source, text: str) -> Path:
     timestamp = dt.datetime.now(dt.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     path = RAW_DIR / f"{timestamp}-{source.id}.txt"
@@ -2215,15 +2237,17 @@ def import_with_cache(conn: sqlite3.Connection, source: Source, cache_path: Path
     else:
         raw_path = save_raw(source, text)
         live = parser(source, text)
-        # Live wins on conflicts so a clean fetch can correct a stale cached date/url/title; the
-        # cache only supplies rows the live fetch is missing (e.g. a partially blocked crawl).
-        items = merge_by_title(live, cache)
         if live:
+            # Complete clean fetch: live wins, and cache-only rows the source no longer lists age
+            # out after CACHE_MISS_LIMIT misses (cancellations/renames) instead of living forever.
+            items = age_cache(live, cache)
             save_capture_fixture(cache_path, items)
             status, note = "ok", f"imported {len(live)} upcoming exhibitions ({len(items)} after cache merge)"
         elif cache:
+            items = cache  # clean fetch parsed nothing — suspicious; serve cache, don't age
             status, note = "stale", f"{len(cache)} from cache — clean fetch parsed nothing (check parser/shape)"
         else:
+            items = []
             status, note = "ok", "0 — clean fetch, nothing upcoming"
     for item in items:
         upsert_item(conn, source, item)

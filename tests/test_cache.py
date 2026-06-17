@@ -68,3 +68,15 @@ def test_import_with_cache_live_overrides_cache(tmp_path, monkeypatch):
     assert rows["Show X"]["date_start"] == "2026-10-15"   # live won, not the cached 2026-09-01
     assert rows["Show X"]["date_label"] == "FRESH"
     assert "Cache Only" in rows                            # cache filled the live-missing row
+
+
+def test_age_cache_retires_after_two_misses():
+    cache = [{"title": "Gone", "date_start": "2026-09-01"}, {"title": "Stay", "date_start": "2026-10-01"}]
+    live = [{"title": "Stay", "date_start": "2026-10-02"}]   # Gone no longer listed
+    out1 = L.age_cache(live, cache)
+    gone = [i for i in out1 if i["title"] == "Gone"]
+    assert gone and gone[0]["_misses"] == 1                  # 1st miss: kept, aging
+    assert any(i["title"] == "Stay" and i["_misses"] == 0 for i in out1)  # live resets
+    out2 = L.age_cache(live, out1)                           # feed aged cache back: 2nd miss
+    assert not any(i["title"] == "Gone" for i in out2)       # retired after two misses
+    assert any(i["title"] == "Stay" for i in out2)
