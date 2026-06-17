@@ -82,6 +82,15 @@ running, date unknown" as undated-future.
 
 `fetch_text` sends a full browser header set, **falls back to curl on a 403** (some sources,
 e.g. Metacritic, TLS-fingerprint `urllib3`), and **retries on a 429** honoring `Retry-After`.
+It also retries a 403 with a plainer UA (Tate's WAF blocks the Chrome/125 Client-Hints string).
+
+**Integrity rule — a failed scrape makes data STALE, never empty.** For bot-walled/flaky sites
+(Serpentine, Park Avenue Armory), `fetch_valid_page` returns `None` on a challenge / redirect /
+truncated / wrong-shape page, and the importer then serves the committed last-good cache and
+records a `stale` status instead of publishing zero. The cache is overwritten only after a clean,
+validated fetch (separate "fetch" from "publish"); a good run merges live results with the cache
+(`merge_by_title`) so a known future item never vanishes. Zero imports are valid only after a
+clean fetch of the expected shape. (404 on a paginated crawl = end-of-pages, not a block.)
 
 ## Film (`tmdb_movies`)
 

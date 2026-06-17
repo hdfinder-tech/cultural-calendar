@@ -30,7 +30,7 @@ import requests
 # Migrated to the cultural_calendar package (behavior-preserving re-org); re-exported here
 # so this module stays runnable during the migration.
 from cultural_calendar.core.config import *  # noqa: F401,F403
-from cultural_calendar.core.config import ROOT, DATA_DIR, RAW_DIR, DETAIL_DIR, DB_PATH, SOURCES_PATH, HTML_PATH, MOMA_CAPTURE_LINKS, MET_CAPTURE, MET_OPERA_CAPTURE, ARMORY_CAPTURE, NPG_CAPTURE, GRAND_PALAIS_CAPTURE, POMPIDOU_CAPTURE, MAM_CAPTURE, CARNEGIE_CAPTURE, FRICK_CAPTURE, MONTH_PATTERN, MONTH_RE, MONTH_NUMBERS, Source, today, end_date, load_sources
+from cultural_calendar.core.config import ROOT, DATA_DIR, RAW_DIR, DETAIL_DIR, DB_PATH, SOURCES_PATH, HTML_PATH, MOMA_CAPTURE_LINKS, MET_CAPTURE, MET_OPERA_CAPTURE, ARMORY_CAPTURE, SERPENTINE_CAPTURE, NPG_CAPTURE, GRAND_PALAIS_CAPTURE, POMPIDOU_CAPTURE, MAM_CAPTURE, CARNEGIE_CAPTURE, FRICK_CAPTURE, MONTH_PATTERN, MONTH_RE, MONTH_NUMBERS, Source, today, end_date, load_sources
 from cultural_calendar.core.html import normalize_space, strip_tags, LinkTextParser, ArticleParser, MetaParser  # noqa: F401
 
 
@@ -177,6 +177,36 @@ def fetch_with_curl(url: str, params: dict[str, Any] | None, headers: dict[str, 
     if result.returncode != 0:
         raise RuntimeError(f"curl fetch failed for {url}: {result.stderr[:200]}")
     return result.stdout
+
+
+def fetch_valid_page(url: str, must_contain: tuple[str, ...] = ()) -> str | None:
+    """Fetch a page, returning its text only if it looks like a complete, real page — not a bot
+    challenge, a redirect stub, or a truncated shell. Returns None on any failed, blocked, or
+    suspicious fetch so callers can keep the last-known-good data. Rule: a failed scrape makes
+    data STALE, never empty. `must_contain` asserts expected page boilerplate (page-shape check)."""
+    try:
+        text = fetch_text(url)
+    except Exception:
+        return None
+    lowered = text.lower()
+    if (len(text) < 8000 or "been blocked" in lowered or "attention required" in lowered
+            or "just a moment" in lowered or "cf-chl" in lowered or "<title>301" in lowered):
+        return None
+    if must_contain and not all(token in text for token in must_contain):
+        return None
+    return text
+
+
+def merge_by_title(base: list[dict[str, Any]], extra: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Union two item lists, de-duplicated by normalized title (base wins on conflict)."""
+    out = list(base)
+    have = {normalized_dedupe_title(i["title"]) for i in base}
+    for item in extra:
+        key = normalized_dedupe_title(item["title"])
+        if key not in have:
+            out.append(item)
+            have.add(key)
+    return out
 
 
 def save_raw(source: Source, text: str) -> Path:
@@ -2279,6 +2309,69 @@ def import_tate(conn: sqlite3.Connection, source: Source) -> int:
     return count
 
 
+def parse_armory_season(text: str) -> list[dict[str, Any]]:
+    """Park Avenue Armory current-season page: each event links to /season-events/<slug> with
+    its title, and carries a US-format date range ("September 14–26, 2026") nearby. Cut at
+    "Previously This Season" to drop past items; keep future openings. Best-effort: the page is
+    Cloudflare-gated so this runs only on a non-blocked fetch (else the fixture is used)."""
+    cut = text.find("Previously This Season")
+    region = text[:cut] if cut > 0 else text
+    skip = {"current-season", "2026-season", "event-series", "past-events", "subscriptions",
+            "calendar", "tickets", "plan-your-visit", "support", "membership"}
+    items: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for m in re.finditer(r'href="(?:https://www\.armoryonpark\.org)?/season-events/([a-z0-9-]+)/?"(.*?)</a>', region, re.S):
+        slug, inner = m.group(1), m.group(2)
+        if slug in skip or slug in seen:
+            continue
+        title = normalize_space(html.unescape(strip_tags(inner)))
+        if not title or len(title) < 3:
+            continue
+        start, label = extract_pac_date(strip_tags(region[m.start():m.start() + 700]))
+        if not start or start < today() or start > end_date():
+            continue
+        seen.add(slug)
+        items.append({
+            "title": title,
+            "date_start": start.isoformat(),
+            "date_label": label,
+            "date_precision": "exact",
+            "venue_or_platform": "Park Avenue Armory",
+            "city": "New York",
+            "source_url": f"https://www.armoryonpark.org/season-events/{slug}",
+            "external_id": f"armory:{slug}",
+            "importance_score": 13,
+        })
+    return items
+
+
+def import_armory(conn: sqlite3.Connection, source: Source) -> int:
+    """Park Avenue Armory. One request to the current-season page (no detail-page fan-out, no
+    ticketing pages). The site is Cloudflare-gated, so on a 403/429/challenge or an empty parse
+    we use the committed fixture as the last-known-good cache — a block degrades freshness, it
+    doesn't break the run. A good fetch refreshes the fixture (met_opera-style self-heal)."""
+    # The committed fixture is the authoritative last-good cache (it carries the per-discipline
+    # categories that come from the page's section markup). A blocked/truncated fetch is a FAILED
+    # fetch — serve the cache and flag it stale, never publish empty. A clean fetch only ADDS shows
+    # the cache is missing; it never overwrites the cache (so categories are preserved).
+    cache = load_capture_fixture(ARMORY_CAPTURE)
+    text = fetch_valid_page(source.url, must_contain=("season-events",))
+    raw_path = save_raw(source, text) if text else None
+    if text is None:
+        items, status = cache, "stale"
+        note = f"{len(cache)} served from last-good cache — live fetch blocked (data may be stale)"
+    else:
+        items = merge_by_title(cache, parse_armory_season(text))
+        added = len(items) - len(cache)
+        status = "ok"
+        note = f"last-good cache{f' + {added} new from current-season page' if added else ''} ({len(items)})"
+    for item in items:
+        upsert_item(conn, source, item)
+        ensure_model_enrichment_placeholder(conn, source, item)
+    record_run(conn, source, status, note, raw_path)
+    return len(items)
+
+
 def import_serpentine(conn: sqlite3.Connection, source: Source, max_pages: int = 8) -> int:
     """Serpentine Galleries (London). The What's On listing is server-rendered teaser cards
     (teaser__pretitle category, teaser__title link, meta__row spans for venue + UK-format date).
@@ -2286,19 +2379,31 @@ def import_serpentine(conn: sqlite3.Connection, source: Source, max_pages: int =
     land on /whats-on/page/2/+. Crawl page by page until a page fails or has no teaser cards.
     Keep future-opening 'Exhibitions' only."""
     base = "https://www.serpentinegalleries.org/whats-on/"
-    count = 0
+    live_items: list[dict[str, Any]] = []
     seen: set[str] = set()
     raw_path = None
+    blocked = False
     for page in range(1, max_pages + 1):
         url = base if page == 1 else f"{base}page/{page}/"
         try:
             text = fetch_text(url)
+        except requests.HTTPError as exc:
+            # 404 = past the last page (a normal end); other HTTP errors = a failed/blocked fetch.
+            if exc.response is not None and exc.response.status_code == 404:
+                break
+            blocked = True
+            break
         except Exception:
+            blocked = True
+            break
+        lowered = text.lower()
+        if len(text) < 8000 or "been blocked" in lowered or "attention required" in lowered or "just a moment" in lowered:
+            blocked = True  # challenge / truncated shell -> failed fetch, not an empty page
             break
         if page == 1:
             raw_path = save_raw(source, text)
         cards = re.split(r'(?=<section class="teaser )', text)
-        if len(cards) <= 1:  # no teaser cards -> past the last page
+        if len(cards) <= 1:  # valid page, genuinely no teaser cards -> end of pagination (not blocked)
             break
         for card in cards:
             # Category, venue, and pretitle all wrap nested <a> tags, so strip before matching.
@@ -2332,11 +2437,24 @@ def import_serpentine(conn: sqlite3.Connection, source: Source, max_pages: int =
                 "description": "Serpentine Galleries, London",
                 "importance_score": 14,
             }
-            upsert_item(conn, source, item)
-            ensure_model_enrichment_placeholder(conn, source, item)
-            count += 1
-    record_run(conn, source, "ok", f"imported {count} upcoming exhibitions", raw_path)
-    return count
+            live_items.append(item)
+    # Integrity rule: a blocked/truncated fetch is a FAILED fetch, not an empty programme. Keep
+    # the last-good cache and merge it with anything the live crawl found; only overwrite the
+    # cache after a clean crawl (no page was blocked). Never publish empty from a bad fetch.
+    cache = load_capture_fixture(SERPENTINE_CAPTURE)
+    items = merge_by_title(cache, live_items)
+    if blocked:
+        status = "stale"
+        note = f"{len(items)} served from last-good cache — live crawl blocked (data may be stale)"
+    else:
+        save_capture_fixture(SERPENTINE_CAPTURE, items)  # clean fetch -> refresh the cache
+        status = "ok"
+        note = f"imported {len(live_items)} upcoming exhibitions ({len(items)} after cache merge)"
+    for item in items:
+        upsert_item(conn, source, item)
+        ensure_model_enrichment_placeholder(conn, source, item)
+    record_run(conn, source, status, note, raw_path)
+    return len(items)
 
 
 def import_va(conn: sqlite3.Connection, source: Source) -> int:
@@ -2736,7 +2854,6 @@ def load_capture_fixture(path: Path) -> list[dict[str, Any]]:
 # Hand-maintained capture fixtures: source id -> committed JSON of normalized items. For
 # venues with no scriptable path (Cloudflare/JS/non-English). Refresh each season by hand.
 CAPTURE_FIXTURE_SOURCES = {
-    "armory": ARMORY_CAPTURE,
     "npg_london": NPG_CAPTURE,
     "grand_palais": GRAND_PALAIS_CAPTURE,
     "centre_pompidou": POMPIDOU_CAPTURE,

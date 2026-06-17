@@ -28,6 +28,7 @@ _DEDICATED: dict[str, tuple[str, object, bool]] = {
     "tate_britain": ("html", legacy.import_tate, False),
     "fondation_lv": ("html", legacy.import_flv, False),
     "serpentine": ("html", legacy.import_serpentine, False),
+    "armory": ("html", legacy.import_armory, False),
     "pac_nyc": ("html", legacy.import_pac, False),
     "the_shed": ("html", legacy.import_the_shed, False),
 }
@@ -37,7 +38,6 @@ _HTML_TACTIC = {
     "new_museum": "embedded_json",
     "moma_exhibitions": "capture",
     "frick": "capture",
-    "armory": "capture",
     "npg_london": "capture",
     "grand_palais": "capture",
     "centre_pompidou": "capture",
