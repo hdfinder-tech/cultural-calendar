@@ -30,7 +30,7 @@ import requests
 # Migrated to the cultural_calendar package (behavior-preserving re-org); re-exported here
 # so this module stays runnable during the migration.
 from cultural_calendar.core.config import *  # noqa: F401,F403
-from cultural_calendar.core.config import ROOT, DATA_DIR, RAW_DIR, DETAIL_DIR, DB_PATH, SOURCES_PATH, HTML_PATH, MOMA_CAPTURE_LINKS, MET_CAPTURE, MET_OPERA_CAPTURE, ARMORY_CAPTURE, TATE_CAPTURE, TATE_BRITAIN_CAPTURE, SERPENTINE_CAPTURE, NPG_CAPTURE, FLV_CAPTURE, GRAND_PALAIS_CAPTURE, POMPIDOU_CAPTURE, VA_CAPTURE, MAM_CAPTURE, CARNEGIE_CAPTURE, FRICK_CAPTURE, MONTH_PATTERN, MONTH_RE, MONTH_NUMBERS, Source, today, end_date, load_sources
+from cultural_calendar.core.config import ROOT, DATA_DIR, RAW_DIR, DETAIL_DIR, DB_PATH, SOURCES_PATH, HTML_PATH, MOMA_CAPTURE_LINKS, MET_CAPTURE, MET_OPERA_CAPTURE, ARMORY_CAPTURE, TATE_CAPTURE, TATE_BRITAIN_CAPTURE, SERPENTINE_CAPTURE, NPG_CAPTURE, FLV_CAPTURE, GRAND_PALAIS_CAPTURE, POMPIDOU_CAPTURE, MAM_CAPTURE, CARNEGIE_CAPTURE, FRICK_CAPTURE, MONTH_PATTERN, MONTH_RE, MONTH_NUMBERS, Source, today, end_date, load_sources
 from cultural_calendar.core.html import normalize_space, strip_tags, LinkTextParser, ArticleParser, MetaParser  # noqa: F401
 
 
@@ -2201,6 +2201,51 @@ def import_guggenheim(conn: sqlite3.Connection, source: Source) -> int:
     return count
 
 
+def import_va(conn: sqlite3.Connection, source: Source) -> int:
+    """Victoria and Albert Museum (London). The exhibitions listing embeds schema.org
+    microdata per card (`<li id="SLUG" data-wo-type="exhibition"><article itemprop="event">`
+    with meta name/startDate/endDate), so it's fully scriptable with no detail hydration.
+    Future-opening only."""
+    text = fetch_text(source.url)
+    raw_path = save_raw(source, text)
+    count = 0
+    seen: set[str] = set()
+    for match in re.finditer(
+        r'id="([a-z0-9-]+)"[^>]*data-wo-type="exhibition".*?'
+        r'itemprop="name" content="([^"]+)"[^<]*'
+        r'<meta itemprop="startDate" content="(20\d\d-\d\d-\d\d)"[^<]*'
+        r'<meta itemprop="endDate" content="(20\d\d-\d\d-\d\d)"',
+        text, re.S,
+    ):
+        slug, title, start_str, end_str = match.groups()
+        title = normalize_space(html.unescape(title))
+        try:
+            start, end = dt.date.fromisoformat(start_str), dt.date.fromisoformat(end_str)
+        except ValueError:
+            continue
+        if not title or slug in seen or start < today() or start > end_date():
+            continue
+        seen.add(slug)
+        url = f"https://www.vam.ac.uk/exhibitions/{slug}"
+        item = {
+            "title": title,
+            "date_start": start.isoformat(),
+            "date_label": f"{format_us_date(start)} – {format_us_date(end)}",
+            "date_precision": "exact",
+            "venue_or_platform": "Victoria and Albert Museum",
+            "city": "London",
+            "source_url": url,
+            "external_id": url,
+            "description": "V&A, South Kensington, London",
+            "importance_score": 13,
+        }
+        upsert_item(conn, source, item)
+        ensure_model_enrichment_placeholder(conn, source, item)
+        count += 1
+    record_run(conn, source, "ok", f"imported {count} upcoming exhibitions", raw_path)
+    return count
+
+
 def import_lacma(conn: sqlite3.Connection, source: Source) -> int:
     """LACMA (Drupal Views) — listing cards expose title + start/end date fields. Fetchable
     directly (no anti-bot), so fully scriptable. Future-opening only."""
@@ -2514,7 +2559,6 @@ CAPTURE_FIXTURE_SOURCES = {
     "fondation_lv": FLV_CAPTURE,
     "grand_palais": GRAND_PALAIS_CAPTURE,
     "centre_pompidou": POMPIDOU_CAPTURE,
-    "va_london": VA_CAPTURE,
     "mam_paris": MAM_CAPTURE,
 }
 
