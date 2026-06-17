@@ -1889,6 +1889,16 @@ def tvmaze_principals(show_id: Any, cache: dict[Any, list[dict[str, str]]]) -> l
     return people
 
 
+def tmdb_screenwriters(crew: list[dict[str, Any]]) -> list[str]:
+    """Screenwriter names from a TMDb crew list. Prefer the 'Screenplay' job; fall back to the
+    generic 'Writer'. Source-material credits ("Novel", "Story", "Author", "Characters", …) are
+    NOT screenwriters — e.g. Homer is credited on Nolan's Odyssey as the source, not the writer."""
+    screenplay = [m.get("name") for m in crew if m.get("job") == "Screenplay" and m.get("name")]
+    if screenplay:
+        return screenplay
+    return [m.get("name") for m in crew if m.get("job") == "Writer" and m.get("name")]
+
+
 def tmdb_principals(movie_id: Any, token: str) -> list[dict[str, str]]:
     """Director, writer(s), then top billed cast for a TMDb movie, each role-labeled."""
     people: list[dict[str, str]] = []
@@ -1909,9 +1919,8 @@ def tmdb_principals(movie_id: Any, token: str) -> list[dict[str, str]]:
         for member in data.get("crew", []):
             if member.get("job") == "Director":
                 add(member.get("name"), "Director")
-        for member in data.get("crew", []):
-            if member.get("job") in {"Screenplay", "Writer", "Story", "Author"}:
-                add(member.get("name"), "Writer")
+        for name in tmdb_screenwriters(data.get("crew", [])):
+            add(name, "Writer")
         for member in (data.get("cast") or [])[:5]:
             add(member.get("name"), "Cast")
     except Exception:

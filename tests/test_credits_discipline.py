@@ -18,6 +18,21 @@ def test_format_credits_roles_and_order():
     assert "With Matt Damon, Tom Holland" in out
 
 
+def test_tmdb_screenwriters_excludes_source_author():
+    # Homer is the source ("Novel"), not the screenwriter; Nolan wrote the screenplay.
+    crew = [
+        {"job": "Director", "name": "Christopher Nolan"},
+        {"job": "Screenplay", "name": "Christopher Nolan"},
+        {"job": "Novel", "name": "Homer"},
+        {"job": "Story", "name": "Homer"},
+    ]
+    assert L.tmdb_screenwriters(crew) == ["Christopher Nolan"]
+    # Falls back to the generic "Writer" job only when there's no "Screenplay" credit.
+    assert L.tmdb_screenwriters([{"job": "Writer", "name": "Greta Gerwig"}]) == ["Greta Gerwig"]
+    # A film with only a source author yields no screenwriter (not "Written by Homer").
+    assert L.tmdb_screenwriters([{"job": "Novel", "name": "Homer"}]) == []
+
+
 def test_format_credits_suppresses_artist_and_drops_ep():
     # Album artist role is suppressed (already in the title).
     assert L.format_credits(json.dumps([{"name": "Adele", "role": "Artist"}])) == ""
