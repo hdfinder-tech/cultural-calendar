@@ -2434,6 +2434,50 @@ def parse_serpentine_annual(text: str) -> list[dict[str, Any]]:
     return items
 
 
+SERPENTINE_PRESS_URL = "https://www.serpentinegalleries.org/about/press/"
+
+
+def collect_serpentine_press(limit: int = 12) -> tuple[list[dict[str, Any]], bool]:
+    """Third independent source: per-exhibition press-release pages (precise run dates, no
+    pagination). Returns (items, ok); ok is False only if the press index itself is blocked.
+    Each press page is validated, so a blocked one is skipped — never breaks the run."""
+    index = fetch_valid_page(SERPENTINE_PRESS_URL, must_contain=("/about/press/",))
+    if index is None:
+        return [], False
+    slugs: list[str] = []
+    for slug in re.findall(r"/about/press/([a-z0-9-]+)/", index):
+        if slug not in slugs and slug not in {"page", "previous-serpentine-pavilions"}:
+            slugs.append(slug)
+    items: list[dict[str, Any]] = []
+    for slug in slugs[:limit]:
+        page = fetch_valid_page(f"{SERPENTINE_PRESS_URL}{slug}/")
+        if page is None:
+            continue
+        meta = MetaParser()
+        meta.feed(page)
+        title = re.split(r"\s*[-|]\s*Serpentine", meta.meta.get("og:title") or "")[0].strip()
+        title = title.title() if title.isupper() else title  # press titles are often ALL CAPS
+        run = re.search(r"(\d{1,2} [A-Z][a-z]+(?: \d{4})? ?[–-] ?\d{1,2} [A-Z][a-z]+ \d{4})", strip_tags(page))
+        if not title or not run:
+            continue
+        start, _ = tate_opening_date(run.group(1))
+        if not start or start < today() or start > end_date():
+            continue
+        items.append({
+            "title": normalize_space(html.unescape(title)),
+            "date_start": start.isoformat(),
+            "date_label": normalize_space(run.group(1)),
+            "date_precision": "exact",
+            "venue_or_platform": "Serpentine",
+            "city": "London",
+            "source_url": f"{SERPENTINE_PRESS_URL}{slug}/",
+            "external_id": f"serpentine-press:{slug}",
+            "description": "Serpentine Galleries, London",
+            "importance_score": 14,
+        })
+    return items, True
+
+
 def import_serpentine(conn: sqlite3.Connection, source: Source, max_pages: int = 8) -> int:
     """Serpentine Galleries (London). The What's On listing is server-rendered teaser cards
     (teaser__pretitle category, teaser__title link, meta__row spans for venue + UK-format date).
@@ -2500,23 +2544,26 @@ def import_serpentine(conn: sqlite3.Connection, source: Source, max_pages: int =
                 "importance_score": 14,
             }
             live_items.append(item)
-    # Source diversity: also read the independent annual programme page, so a blocked or reordered
-    # listing page can't hide a future exhibition. Merge both live sources, then the last-good cache.
+    # Source diversity (three independent live paths): the paginated listing, the annual programme
+    # page, and the per-exhibition press pages. A blocked/reordered/missing one can't hide a future
+    # exhibition. Merge all three, then the last-good cache. Listing/annual win titles over press
+    # (cleaner casing); press adds precise dates for anything they miss.
     annual = fetch_valid_page(SERPENTINE_ANNUAL_URL, must_contain=("Coming in 2026",))
-    live = merge_by_title(live_items, parse_serpentine_annual(annual) if annual else [])
-    all_blocked = blocked and annual is None  # listing crawl blocked AND annual page blocked
+    press_items, press_ok = collect_serpentine_press()
+    live = merge_by_title(merge_by_title(live_items, parse_serpentine_annual(annual) if annual else []), press_items)
+    all_blocked = blocked and annual is None and not press_ok
     cache = load_capture_fixture(SERPENTINE_CAPTURE)
     items = merge_by_title(cache, live)
     # Integrity rule: a failed scrape makes data STALE, never empty. Refresh the cache only when a
     # live source returned real data; serve the cache (stale) when every source is blocked/empty.
     if all_blocked or not live:
         status = "stale"
-        note = f"{len(items)} from last-good cache — live sources blocked/empty (stale)"
+        note = f"{len(items)} from last-good cache — all live sources blocked/empty (stale)"
     else:
         save_capture_fixture(SERPENTINE_CAPTURE, items)
-        srcs = (0 if blocked else 1) + (1 if annual else 0)
+        srcs = (0 if blocked else 1) + (1 if annual else 0) + (1 if press_ok else 0)
         status = "ok"
-        note = f"imported {len(live)} from {srcs}/2 live sources ({len(items)} after cache merge)"
+        note = f"imported {len(live)} from {srcs}/3 live sources ({len(items)} after cache merge)"
     for item in items:
         upsert_item(conn, source, item)
         ensure_model_enrichment_placeholder(conn, source, item)
