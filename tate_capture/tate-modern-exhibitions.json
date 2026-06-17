@@ -1,0 +1,53 @@
+{
+  "capturedAt": "2026-06-17",
+  "items": [
+    {
+      "title": "Frida: The Making of an Icon",
+      "date_start": "2026-06-25",
+      "date_label": "25 Jun 2026 – 3 Jan 2027",
+      "date_precision": "exact",
+      "venue_or_platform": "Tate Modern",
+      "city": "London",
+      "source_url": "https://www.tate.org.uk/whats-on/tate-modern/frida-kahlo-the-making-of-an-icon",
+      "external_id": "https://www.tate.org.uk/whats-on/tate-modern/frida-kahlo-the-making-of-an-icon",
+      "description": "Tate Modern, London",
+      "importance_score": 14
+    },
+    {
+      "title": "Ana Mendieta",
+      "date_start": "2026-07-15",
+      "date_label": "15 July 2026 – 17 Jan 2027",
+      "date_precision": "exact",
+      "venue_or_platform": "Tate Modern",
+      "city": "London",
+      "source_url": "https://www.tate.org.uk/whats-on/tate-modern/ana-mendieta",
+      "external_id": "https://www.tate.org.uk/whats-on/tate-modern/ana-mendieta",
+      "description": "Tate Modern, London",
+      "importance_score": 14
+    },
+    {
+      "title": "Light and Magic: The Birth of Art Photography",
+      "date_start": "2026-10-14",
+      "date_label": "14 Oct 2026 – 21 Feb 2027",
+      "date_precision": "exact",
+      "venue_or_platform": "Tate Modern",
+      "city": "London",
+      "source_url": "https://www.tate.org.uk/whats-on/tate-modern/light-and-magic",
+      "external_id": "https://www.tate.org.uk/whats-on/tate-modern/light-and-magic",
+      "description": "Tate Modern, London",
+      "importance_score": 14
+    },
+    {
+      "title": "Hyundai Commission: Tarek Atoui",
+      "date_start": "2026-10-13",
+      "date_label": "13 Oct 2026 – 11 Apr 2027",
+      "date_precision": "exact",
+      "venue_or_platform": "Tate Modern",
+      "city": "London",
+      "source_url": "https://www.tate.org.uk/whats-on/tate-modern/hyundai-commission-2026",
+      "external_id": "https://www.tate.org.uk/whats-on/tate-modern/hyundai-commission-2026",
+      "description": "Tate Modern, London",
+      "importance_score": 14
+    }
+  ]
+}

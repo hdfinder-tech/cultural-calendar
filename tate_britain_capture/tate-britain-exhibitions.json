@@ -1,0 +1,29 @@
+{
+  "capturedAt": "2026-06-17",
+  "items": [
+    {
+      "title": "The 90s: Art and Fashion",
+      "date_start": "2026-10-08",
+      "date_label": "8 Oct 2026 – 14 Feb 2027",
+      "date_precision": "exact",
+      "venue_or_platform": "Tate Britain",
+      "city": "London",
+      "source_url": "https://www.tate.org.uk/whats-on/tate-britain/the-90s",
+      "external_id": "https://www.tate.org.uk/whats-on/tate-britain/the-90s",
+      "description": "Tate Britain, London",
+      "importance_score": 14
+    },
+    {
+      "title": "Vanessa Bell & Duncan Grant: Inside Bloomsbury",
+      "date_start": "2026-11-12",
+      "date_label": "12 Nov 2026 – 11 Apr 2027",
+      "date_precision": "exact",
+      "venue_or_platform": "Tate Britain",
+      "city": "London",
+      "source_url": "https://www.tate.org.uk/whats-on/tate-britain/vanessa-bell-and-duncan-grant",
+      "external_id": "https://www.tate.org.uk/whats-on/tate-britain/vanessa-bell-and-duncan-grant",
+      "description": "Tate Britain, London",
+      "importance_score": 14
+    }
+  ]
+}

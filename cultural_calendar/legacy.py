@@ -30,7 +30,7 @@ import requests
 # Migrated to the cultural_calendar package (behavior-preserving re-org); re-exported here
 # so this module stays runnable during the migration.
 from cultural_calendar.core.config import *  # noqa: F401,F403
-from cultural_calendar.core.config import ROOT, DATA_DIR, RAW_DIR, DETAIL_DIR, DB_PATH, SOURCES_PATH, HTML_PATH, MOMA_CAPTURE_LINKS, MET_CAPTURE, MET_OPERA_CAPTURE, ARMORY_CAPTURE, SERPENTINE_CAPTURE, NPG_CAPTURE, GRAND_PALAIS_CAPTURE, POMPIDOU_CAPTURE, MAM_CAPTURE, CARNEGIE_CAPTURE, FRICK_CAPTURE, MONTH_PATTERN, MONTH_RE, MONTH_NUMBERS, Source, today, end_date, load_sources
+from cultural_calendar.core.config import ROOT, DATA_DIR, RAW_DIR, DETAIL_DIR, DB_PATH, SOURCES_PATH, HTML_PATH, MOMA_CAPTURE_LINKS, MET_CAPTURE, MET_OPERA_CAPTURE, ARMORY_CAPTURE, SERPENTINE_CAPTURE, VA_CACHE, TATE_MODERN_CACHE, TATE_BRITAIN_CACHE, FLV_CACHE, NPG_CAPTURE, GRAND_PALAIS_CAPTURE, POMPIDOU_CAPTURE, MAM_CAPTURE, CARNEGIE_CAPTURE, FRICK_CAPTURE, MONTH_PATTERN, MONTH_RE, MONTH_NUMBERS, Source, today, end_date, load_sources
 from cultural_calendar.core.html import normalize_space, strip_tags, LinkTextParser, ArticleParser, MetaParser  # noqa: F401
 
 
@@ -2271,14 +2271,43 @@ def tate_opening_date(text: str) -> tuple[dt.date | None, str | None]:
     return (opening, normalize_space(text)) if opening else (None, None)
 
 
-def import_tate(conn: sqlite3.Connection, source: Source) -> int:
-    """Tate Modern / Tate Britain. The whats-on listing has a card per programme: title in the
-    link's aria-label, run in an `icon--calendar` <span>. Keep future-opening exhibitions;
-    running shows ("Until ..."), tours, and talks self-exclude (no parseable opening date)."""
-    text = fetch_text(source.url)
-    raw_path = save_raw(source, text)
+def import_with_cache(conn: sqlite3.Connection, source: Source, cache_path: Path,
+                      parser: "callable", must_contain: tuple[str, ...] = ()) -> int:
+    """Run a live scraper backed by a committed last-good cache, enforcing the integrity rule:
+    a failed scrape makes data STALE, never empty. Validate the fetch (fetch_valid_page); on a
+    blocked/challenge/truncated/wrong-shape page, serve the cache and record 'stale'. On a clean
+    fetch, merge live results with the cache, refresh the cache, and record 'ok'. A clean fetch
+    that parses nothing keeps the cache (flagged) so a parser/shape change can't silently zero a
+    venue — zero is published only on a clean fetch with no cache to fall back to."""
+    cache = load_capture_fixture(cache_path)
+    text = fetch_valid_page(source.url, must_contain)
+    if text is None:
+        items, status, note, raw_path = cache, "stale", \
+            f"{len(cache)} from last-good cache — fetch blocked/invalid (stale)", None
+    else:
+        raw_path = save_raw(source, text)
+        live = parser(source, text)
+        items = merge_by_title(cache, live)
+        if live:
+            save_capture_fixture(cache_path, items)
+            status, note = "ok", f"imported {len(live)} upcoming exhibitions ({len(items)} after cache merge)"
+        elif cache:
+            status, note = "stale", f"{len(cache)} from cache — clean fetch parsed nothing (check parser/shape)"
+        else:
+            status, note = "ok", "0 — clean fetch, nothing upcoming"
+    for item in items:
+        upsert_item(conn, source, item)
+        ensure_model_enrichment_placeholder(conn, source, item)
+    record_run(conn, source, status, note, raw_path)
+    return len(items)
+
+
+def parse_tate(source: Source, text: str) -> list[dict[str, Any]]:
+    """Tate Modern / Tate Britain whats-on cards: title in the link aria-label, run in an
+    `icon--calendar` <span>. Future-opening exhibitions only; running shows ("Until ..."),
+    tours, and talks self-exclude (no parseable opening date)."""
     path = re.search(r"/whats-on/(tate-[a-z]+)", source.url).group(1)
-    count = 0
+    items: list[dict[str, Any]] = []
     seen: set[str] = set()
     for seg in re.split(rf'(?=<a href="/whats-on/{path}/[a-z0-9-]+" aria-label=)', text):
         link = re.match(rf'<a href="(/whats-on/{path}/[a-z0-9-]+)" aria-label="([^"]+)"', seg)
@@ -2290,7 +2319,7 @@ def import_tate(conn: sqlite3.Connection, source: Source) -> int:
         if not start or start < today() or start > end_date() or url in seen:
             continue
         seen.add(url)
-        item = {
+        items.append({
             "title": normalize_space(html.unescape(link.group(2))),
             "date_start": start.isoformat(),
             "date_label": label,
@@ -2301,12 +2330,13 @@ def import_tate(conn: sqlite3.Connection, source: Source) -> int:
             "external_id": url,
             "description": f"{source.name}, London",
             "importance_score": 14,
-        }
-        upsert_item(conn, source, item)
-        ensure_model_enrichment_placeholder(conn, source, item)
-        count += 1
-    record_run(conn, source, "ok", f"imported {count} upcoming exhibitions", raw_path)
-    return count
+        })
+    return items
+
+
+def import_tate(conn: sqlite3.Connection, source: Source) -> int:
+    cache = TATE_MODERN_CACHE if "tate-modern" in source.url else TATE_BRITAIN_CACHE
+    return import_with_cache(conn, source, cache, parse_tate, must_contain=("icon--calendar",))
 
 
 def parse_armory_season(text: str) -> list[dict[str, Any]]:
@@ -2457,14 +2487,11 @@ def import_serpentine(conn: sqlite3.Connection, source: Source, max_pages: int =
     return len(items)
 
 
-def import_va(conn: sqlite3.Connection, source: Source) -> int:
-    """Victoria and Albert Museum (London). The exhibitions listing embeds schema.org
-    microdata per card (`<li id="SLUG" data-wo-type="exhibition"><article itemprop="event">`
-    with meta name/startDate/endDate), so it's fully scriptable with no detail hydration.
-    Future-opening only."""
-    text = fetch_text(source.url)
-    raw_path = save_raw(source, text)
-    count = 0
+def parse_va(source: Source, text: str) -> list[dict[str, Any]]:
+    """Victoria and Albert Museum (London). The exhibitions listing embeds schema.org microdata
+    per card (`<li id="SLUG" data-wo-type="exhibition"><article itemprop="event">` with meta
+    name/startDate/endDate), so it's fully scriptable with no detail hydration. Future-opening."""
+    items: list[dict[str, Any]] = []
     seen: set[str] = set()
     for match in re.finditer(
         r'id="([a-z0-9-]+)"[^>]*data-wo-type="exhibition".*?'
@@ -2483,7 +2510,7 @@ def import_va(conn: sqlite3.Connection, source: Source) -> int:
             continue
         seen.add(slug)
         url = f"https://www.vam.ac.uk/exhibitions/{slug}"
-        item = {
+        items.append({
             "title": title,
             "date_start": start.isoformat(),
             "date_label": f"{format_us_date(start)} – {format_us_date(end)}",
@@ -2494,24 +2521,20 @@ def import_va(conn: sqlite3.Connection, source: Source) -> int:
             "external_id": url,
             "description": "V&A, South Kensington, London",
             "importance_score": 13,
-        }
-        upsert_item(conn, source, item)
-        ensure_model_enrichment_placeholder(conn, source, item)
-        count += 1
-    record_run(conn, source, "ok", f"imported {count} upcoming exhibitions", raw_path)
-    return count
+        })
+    return items
 
 
-def import_flv(conn: sqlite3.Connection, source: Source) -> int:
+def import_va(conn: sqlite3.Connection, source: Source) -> int:
+    return import_with_cache(conn, source, VA_CACHE, parse_va, must_contain=('data-wo-type="exhibition"',))
+
+
+def parse_flv(source: Source, text: str) -> list[dict[str, Any]]:
     """Fondation Louis Vuitton (Paris). The rest of the site is an Akamai-gated SPA, but the
-    English "Coming soon" programme page (/en/programme/a-venir) server-renders the exhibition
-    cards: callout__title link + callout__kicker + callout__subtitle ("From DD.MM.YYYY to ...",
-    European day-first). We use only that public HTML surface — no Akamai-protected APIs — and
-    keep future-opening exhibitions. An empty parse (e.g. if the page starts bot-challenging)
-    trips the drift warning rather than masking a problem."""
-    text = fetch_text(source.url)
-    raw_path = save_raw(source, text)
-    count = 0
+    English "Coming soon" page (/en/programme/a-venir) server-renders the cards: callout__title
+    link + callout__kicker + callout__subtitle ("From DD.MM.YYYY to ...", European day-first).
+    Only that public HTML surface — no Akamai-protected APIs. Future-opening exhibitions."""
+    items: list[dict[str, Any]] = []
     seen: set[str] = set()
     for match in re.finditer(
         r'callout__link" href="(https://www\.fondationlouisvuitton\.fr/en/[^"]+)">\s*(.*?)\s*</a>.*?'
@@ -2530,7 +2553,7 @@ def import_flv(conn: sqlite3.Connection, source: Source) -> int:
         if url in seen or start < today() or start > end_date():
             continue
         seen.add(url)
-        item = {
+        items.append({
             "title": normalize_space(html.unescape(strip_tags(title))),
             "date_start": start.isoformat(),
             "date_label": f"{format_us_date(start)} – {format_us_date(end)}",
@@ -2541,12 +2564,12 @@ def import_flv(conn: sqlite3.Connection, source: Source) -> int:
             "external_id": url,
             "description": "Fondation Louis Vuitton, Paris",
             "importance_score": 15,
-        }
-        upsert_item(conn, source, item)
-        ensure_model_enrichment_placeholder(conn, source, item)
-        count += 1
-    record_run(conn, source, "ok", f"imported {count} upcoming exhibitions", raw_path)
-    return count
+        })
+    return items
+
+
+def import_flv(conn: sqlite3.Connection, source: Source) -> int:
+    return import_with_cache(conn, source, FLV_CACHE, parse_flv, must_contain=("callout__subtitle",))
 
 
 def import_lacma(conn: sqlite3.Connection, source: Source) -> int:
