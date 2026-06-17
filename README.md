@@ -20,7 +20,7 @@ The script writes:
 - `data/raw/`: raw source snapshots
 - `data/toy-calendar.html`: simple browsable output
 
-The HTML output separates vague planning items from dated items. Seasonal rows such as `Fall 2026` appear in sections like **Undated fall 2026 events**, so they remain visible for profile and assignment planning even before exact dates are public.
+The HTML output separates vague planning items from dated items. Seasonal/announced rows such as `Fall 2026` appear under **On the horizon**, so they remain visible for profile and assignment planning even before exact dates are public. The page also offers an Editorial ⇄ Calendar view toggle (month → category vs. day-by-day).
 
 The database also keeps detail-page capture and future model enrichment separate:
 

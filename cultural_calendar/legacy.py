@@ -8,7 +8,6 @@ and official pages can feed a normalized calendar without deciding the final app
 
 from __future__ import annotations
 
-import argparse
 import datetime as dt
 import html
 import json
@@ -16,8 +15,6 @@ import os
 import re
 import sqlite3
 import time
-from dataclasses import dataclass
-from html.parser import HTMLParser
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlencode, urljoin
@@ -30,7 +27,7 @@ import requests
 # Migrated to the cultural_calendar package (behavior-preserving re-org); re-exported here
 # so this module stays runnable during the migration.
 from cultural_calendar.core.config import *  # noqa: F401,F403
-from cultural_calendar.core.config import ROOT, DATA_DIR, RAW_DIR, DETAIL_DIR, DB_PATH, SOURCES_PATH, HTML_PATH, MOMA_CAPTURE_LINKS, MET_CAPTURE, MET_OPERA_CAPTURE, ARMORY_CAPTURE, SERPENTINE_CAPTURE, VA_CACHE, TATE_MODERN_CACHE, TATE_BRITAIN_CACHE, FLV_CACHE, NPG_CAPTURE, GRAND_PALAIS_CAPTURE, POMPIDOU_CAPTURE, MAM_CAPTURE, CARNEGIE_CAPTURE, FRICK_CAPTURE, MONTH_PATTERN, MONTH_RE, MONTH_NUMBERS, Source, today, end_date, load_sources
+from cultural_calendar.core.config import ROOT, DATA_DIR, RAW_DIR, DETAIL_DIR, DB_PATH, SOURCES_PATH, HTML_PATH, MOMA_CAPTURE_LINKS, MET_CAPTURE, MET_OPERA_CAPTURE, ARMORY_CAPTURE, SERPENTINE_CAPTURE, VA_CACHE, TATE_MODERN_CACHE, TATE_BRITAIN_CACHE, FLV_CACHE, NPG_CAPTURE, GRAND_PALAIS_CAPTURE, POMPIDOU_CAPTURE, MAM_CAPTURE, FRICK_CAPTURE, MONTH_PATTERN, MONTH_RE, MONTH_NUMBERS, Source, today, end_date, load_sources
 from cultural_calendar.core.html import normalize_space, strip_tags, LinkTextParser, ArticleParser, MetaParser  # noqa: F401
 
 
@@ -397,24 +394,6 @@ def parse_label_start_date(label: str | None) -> dt.date | None:
 
 def date_to_iso(value: dt.date | None) -> str | None:
     return value.isoformat() if value else None
-
-
-def planning_bucket(label: str | None) -> str | None:
-    if not label:
-        return "Undated / TBA"
-    label_lower = label.lower()
-    if "fall 2026" in label_lower or "autumn 2026" in label_lower:
-        return "Undated fall 2026 events"
-    if "summer 2026" in label_lower:
-        return "Undated summer 2026 events"
-    if "winter 2026" in label_lower:
-        return "Undated winter 2026 events"
-    if "spring 2026" in label_lower:
-        return "Undated spring 2026 events"
-    if re.fullmatch(r"2026", label.strip()):
-        return "Undated 2026 events"
-    return None
-
 
 def source_item(title: str, url: str, text: str = "", **extra: Any) -> dict[str, Any]:
     _, _, date_label = detect_date_label(" ".join([title, text]))
@@ -1074,62 +1053,6 @@ def parse_metacritic_albums(source: Source, text: str, limit: int = 220) -> list
             if len(items) >= limit:
                 return items
     return items
-
-
-def titleize_slug(slug: str) -> str:
-    small = {"in", "the", "of", "and", "a", "an", "for", "to", "with"}
-    words = slug.replace("-", " ").split()
-    return " ".join(
-        word if (word in small and index > 0) else word.capitalize()
-        for index, word in enumerate(words)
-    )
-
-
-def parse_carnegie_capture(source: Source, limit: int = 200) -> list[dict[str, Any]]:
-    """Parse the browser-captured Carnegie Hall fixture (Stern/Perelman + Zankel, Carnegie's
-    own programming; see the fixture note for the Algolia capture method). Performers that
-    merely repeat the title are suppressed."""
-    if not CARNEGIE_CAPTURE.exists():
-        return []
-    data = json.loads(CARNEGIE_CAPTURE.read_text())
-    items: list[dict[str, Any]] = []
-    for perf in data.get("performances", []):
-        try:
-            start = dt.date.fromisoformat(perf["date"])
-        except (ValueError, KeyError):
-            continue
-        if start < today() or start > end_date():
-            continue
-        title = normalize_space(perf.get("title", ""))
-        if not title:
-            continue
-        title_lower = title.lower()
-        people = [
-            {"name": p, "role": "Performer"}
-            for p in perf.get("performers", [])
-            if p and p.lower() not in title_lower
-        ]
-        hall = perf.get("venue", "")
-        items.append(
-            {
-                "title": title,
-                "category": "music",
-                "date_start": start.isoformat(),
-                "date_label": format_us_date(start),
-                "date_precision": "exact",
-                "venue_or_platform": "Carnegie Hall",
-                "city": "New York",
-                "source_url": "https://www.carnegiehall.org/events",
-                "external_id": f"carnegie:{perf['date']}:{title_lower[:50]}",
-                "people": people,
-                "description": f"Carnegie Hall — {hall}" if hall else "Carnegie Hall",
-                "importance_score": 16,
-            }
-        )
-        if len(items) >= limit:
-            break
-    return items
-
 
 def parse_frick_capture(source: Source) -> list[dict[str, Any]]:
     """Parse the browser-captured Frick fixture (Drupal site behind Yottaa anti-bot; see

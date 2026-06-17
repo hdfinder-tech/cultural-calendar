@@ -26,8 +26,10 @@ date drift). Layout:
   headless *and* headful (MoMA Akamai shell/403, Frick Yottaa 418), so a heavy headless dep
   earned nothing; they're bot-protected against it. NY Phil left the capture tier entirely
   (it's now a JSON API; see below).
-- `tests/` — **pytest** (16 tests): date engine, role-credits/discipline, registry+health,
-  capture parsers + NY Phil API parser. All offline/deterministic. `toy_calendar.py` is a shim.
+- `tests/` — **pytest** (32 tests): date engine, role-credits/discipline, registry+health,
+  capture parsers + NY Phil API parser, and the cache-integrity invariants (merge precedence,
+  fetch validation, horizon override, live-overrides-cache). All offline/deterministic.
+  `toy_calendar.py` is a shim.
 
 **Run commands (unchanged behavior):**
 ```bash

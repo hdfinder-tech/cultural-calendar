@@ -15,10 +15,12 @@ from typing import Callable
 from ..core.config import Source
 
 # The four fetch tactics (see handover Refresh Runbook):
-#   json_api      - configured request to a JSON endpoint (TMDb, TVMaze, Carnegie/Algolia)
-#   html          - fetch HTML (browser headers + curl fallback), parse, optional detail hydrate
+#   json_api      - configured request to a JSON endpoint (TMDb, TVMaze, Carnegie/Algolia, NY Phil)
+#   html          - fetch HTML (browser headers + curl fallback), parse, optional detail hydrate.
+#                   Live scrapers can be cache-backed (import_with_cache): a blocked/invalid fetch
+#                   serves the last-good committed cache and records "stale", never empty.
 #   embedded_json - fetch HTML, extract an embedded JSON blob (Gagosian/Guggenheim/New Museum)
-#   capture       - read a browser-captured fixture (NY Phil, MoMA, Frick)
+#   capture       - read a committed fixture (MoMA, Frick; self-refreshing Met museum/Met Opera)
 TACTICS = {"json_api", "html", "embedded_json", "capture"}
 
 
