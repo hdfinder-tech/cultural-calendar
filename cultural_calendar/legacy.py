@@ -2402,6 +2402,38 @@ def import_armory(conn: sqlite3.Connection, source: Source) -> int:
     return len(items)
 
 
+SERPENTINE_ANNUAL_URL = "https://www.serpentinegalleries.org/whats-on/2026-at-serpentine/"
+
+
+def parse_serpentine_annual(text: str) -> list[dict[str, Any]]:
+    """The annual "2026 at Serpentine" page lists each show as a heading of the form
+    "Title (23 September 2026 – January 2027)". An independent source from the paginated What's On
+    listing, so a blocked or reordered page 2 can't hide a future exhibition. Future-opening only."""
+    items: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for m in re.finditer(
+        r"<h[1-4][^>]*>\s*([^()<]+?)\s*\((\d{1,2} [A-Z][a-z]+ 20\d\d[^)<]*)\)\s*</h[1-4]>", text):
+        title = normalize_space(html.unescape(m.group(1)))
+        start, _ = tate_opening_date(m.group(2))
+        key = normalized_dedupe_title(title)
+        if not title or not start or start < today() or start > end_date() or key in seen:
+            continue
+        seen.add(key)
+        items.append({
+            "title": title,
+            "date_start": start.isoformat(),
+            "date_label": normalize_space(m.group(2)),
+            "date_precision": "exact",
+            "venue_or_platform": "Serpentine",
+            "city": "London",
+            "source_url": SERPENTINE_ANNUAL_URL,
+            "external_id": f"serpentine-annual:{key}",
+            "description": "Serpentine Galleries, London",
+            "importance_score": 14,
+        })
+    return items
+
+
 def import_serpentine(conn: sqlite3.Connection, source: Source, max_pages: int = 8) -> int:
     """Serpentine Galleries (London). The What's On listing is server-rendered teaser cards
     (teaser__pretitle category, teaser__title link, meta__row spans for venue + UK-format date).
@@ -2468,18 +2500,23 @@ def import_serpentine(conn: sqlite3.Connection, source: Source, max_pages: int =
                 "importance_score": 14,
             }
             live_items.append(item)
-    # Integrity rule: a blocked/truncated fetch is a FAILED fetch, not an empty programme. Keep
-    # the last-good cache and merge it with anything the live crawl found; only overwrite the
-    # cache after a clean crawl (no page was blocked). Never publish empty from a bad fetch.
+    # Source diversity: also read the independent annual programme page, so a blocked or reordered
+    # listing page can't hide a future exhibition. Merge both live sources, then the last-good cache.
+    annual = fetch_valid_page(SERPENTINE_ANNUAL_URL, must_contain=("Coming in 2026",))
+    live = merge_by_title(live_items, parse_serpentine_annual(annual) if annual else [])
+    all_blocked = blocked and annual is None  # listing crawl blocked AND annual page blocked
     cache = load_capture_fixture(SERPENTINE_CAPTURE)
-    items = merge_by_title(cache, live_items)
-    if blocked:
+    items = merge_by_title(cache, live)
+    # Integrity rule: a failed scrape makes data STALE, never empty. Refresh the cache only when a
+    # live source returned real data; serve the cache (stale) when every source is blocked/empty.
+    if all_blocked or not live:
         status = "stale"
-        note = f"{len(items)} served from last-good cache — live crawl blocked (data may be stale)"
+        note = f"{len(items)} from last-good cache — live sources blocked/empty (stale)"
     else:
-        save_capture_fixture(SERPENTINE_CAPTURE, items)  # clean fetch -> refresh the cache
+        save_capture_fixture(SERPENTINE_CAPTURE, items)
+        srcs = (0 if blocked else 1) + (1 if annual else 0)
         status = "ok"
-        note = f"imported {len(live_items)} upcoming exhibitions ({len(items)} after cache merge)"
+        note = f"imported {len(live)} from {srcs}/2 live sources ({len(items)} after cache merge)"
     for item in items:
         upsert_item(conn, source, item)
         ensure_model_enrichment_placeholder(conn, source, item)
