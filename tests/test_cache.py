@@ -93,3 +93,23 @@ def test_armory_fieldwise_keeps_category_refreshes_date():
     assert out["Carlo Vistoli"]["date_start"] == "2026-09-12" # date refreshed from live
     assert out["Carlo Vistoli"]["date_label"] == "new"
     assert "New Show" in out                                  # new live show added
+
+
+def _raise(*a, **k):
+    raise RuntimeError("curl fetch returned HTTP 403")
+
+
+def test_fixture_backed_source_survives_fetch_error(tmp_path, monkeypatch):
+    """A raised fetch failure (e.g. curl rejecting a 403) for a fixture-backed source must serve
+    the committed fixture, never zero — the regression that briefly lost the Met Opera season."""
+    monkeypatch.setattr(L, "DB_PATH", tmp_path / "t.db")
+    monkeypatch.setattr(L, "fetch_text", _raise)
+    monkeypatch.setattr(L, "enrich_detail_pages", lambda *a, **k: None)
+    conn = L.connect()
+    src = next(s for s in L.load_sources() if s.id == "met_opera_2026_27")
+    n = L.import_html_source(conn, src)
+    assert n == len(L.load_capture_fixture(L.MET_OPERA_CAPTURE)) and n > 0  # fixture served, not empty
+    status = conn.execute(
+        "select status from source_runs where source_id='met_opera_2026_27' order by id desc limit 1"
+    ).fetchone()[0]
+    assert status == "stale"

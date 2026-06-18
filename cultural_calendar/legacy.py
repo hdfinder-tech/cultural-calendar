@@ -2959,13 +2959,15 @@ def import_html_source(conn: sqlite3.Connection, source: Source) -> int:
         record_run(conn, source, "ok", f"loaded {len(items)} from committed fixture")
         return len(items)
     raw_path = None
+    # Fixture-backed sources tolerate ANY fetch failure (a 403/429/challenge, whether requests
+    # raises or curl rejects a non-2xx) and fall back to their committed fixture below — a failed
+    # fetch must serve stale data, never go empty.
+    fixture_backed = {"moma_exhibitions", "met_exhibitions", "met_opera_2026_27"}
     try:
         text = fetch_text(source.url)
         raw_path = save_raw(source, text)
-    except requests.HTTPError:
-        # MoMA (bot shell) and the Met (metmuseum.org 429s datacenter/CI IPs) tolerate a
-        # failed fetch and fall back to their committed fixture below.
-        if source.id not in {"moma_exhibitions", "met_exhibitions"}:
+    except (requests.HTTPError, RuntimeError):
+        if source.id not in fixture_backed:
             raise
         text = ""
     if source.id in MUSEUMS:
