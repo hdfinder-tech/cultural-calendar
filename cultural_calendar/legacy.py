@@ -556,10 +556,40 @@ def extract_moma_title_date(text: str) -> tuple[str, str | None]:
     return clean_moma_title(title or text), label
 
 
+def moma_live_enabled() -> bool:
+    """The MoMA live scraper is opt-in (default off): moma.org's WAF 403s our CI and dev
+    hosts, so the committed fixture is the source of truth until a verified capture exists.
+    Set MOMA_LIVE=1 on a non-blocked editorial/network host to let the live path run."""
+    return os.environ.get("MOMA_LIVE", "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def moma_upcoming_section(text: str) -> str | None:
+    """Slice the index HTML to the 'Upcoming exhibitions' section, ending before the boundary
+    heading 'Installations and projects'. Returns None when either heading is missing — the
+    tell that we got a 403 challenge or JS shell rather than the real server-rendered index."""
+    start = re.search(r"Upcoming exhibitions", text, re.I)
+    end = re.search(r"Installations and projects", text, re.I)
+    if not start or not end or end.start() <= start.start():
+        return None
+    return text[start.start():end.start()]
+
+
+def moma_document_valid(text: str) -> bool:
+    """A fetched MoMA index is trustworthy only if it has both section headings AND at least
+    one /calendar/exhibitions/<id> link inside the Upcoming section. This is the gate that lets
+    the live path override the fixture; anything else leaves the fixture untouched."""
+    section = moma_upcoming_section(text or "")
+    return bool(section and re.search(r"/calendar/exhibitions/\d+", section))
+
+
 def parse_moma_capture(source: Source, limit: int = 80) -> list[dict[str, Any]]:
     if not MOMA_CAPTURE_LINKS.exists():
         return []
     data = json.loads(MOMA_CAPTURE_LINKS.read_text())
+    if isinstance(data, dict) and "items" in data:
+        # Structured fixture refreshed from a verified live parse — keep only in-horizon rows.
+        kept = [dict(item) for item in data["items"] if is_future_moma_item(item.get("date_label"))]
+        return kept[:limit]
     items: list[dict[str, Any]] = []
     seen: set[str] = set()
     for link in data.get("exhibitionLinks", []):
@@ -591,8 +621,14 @@ def parse_moma_capture(source: Source, limit: int = 80) -> list[dict[str, Any]]:
 
 
 def parse_moma_exhibitions(source: Source, text: str, limit: int = 100) -> list[dict[str, Any]]:
+    # Parse only the Upcoming section (between its heading and 'Installations and projects'),
+    # so current/ongoing shows below the boundary never leak in. A missing section means the
+    # fetch wasn't the real index — return nothing and let the caller serve the fixture.
+    section = moma_upcoming_section(text)
+    if section is None:
+        return []
     parser = LinkTextParser(source.url)
-    parser.feed(text)
+    parser.feed(section)
     items: list[dict[str, Any]] = []
     seen: set[str] = set()
     for link in parser.links:
@@ -3093,11 +3129,20 @@ def import_html_source(conn: sqlite3.Connection, source: Source) -> int:
     parser = parser_by_source.get(source.id, parse_links)
     items = parser(source, text) if text else []
     used_moma_capture = False
-    if source.id == "moma_exhibitions" and not items:
-        # The live page may now return a 200 JS shell (instead of a 403) that parses to
-        # nothing; fall back to the browser-capture fixture whenever the live parse is empty.
-        items = parse_moma_capture(source)
-        used_moma_capture = True
+    if source.id == "moma_exhibitions":
+        # Fixture-backed source of truth. The live scraper is behind a flag (MOMA_LIVE, default
+        # off) because moma.org WAFs our hosts with a 403. The live parse may override the
+        # committed fixture ONLY when the fetched document proves it's the real index (both
+        # section headings + an in-section exhibition link); a 403 / JS shell / empty parse
+        # leaves the fixture untouched — never replaced with an empty or unverified result.
+        live_items = parse_moma_exhibitions(source, text) \
+            if (moma_live_enabled() and text and moma_document_valid(text)) else []
+        if live_items:
+            save_capture_fixture(MOMA_CAPTURE_LINKS, live_items)  # refresh from a verified fetch
+            items = live_items
+        else:
+            items = parse_moma_capture(source)
+            used_moma_capture = True
     used_met_opera_capture = False
     used_met_capture = False
     if source.id == "met_exhibitions":
@@ -3133,7 +3178,8 @@ def import_html_source(conn: sqlite3.Connection, source: Source) -> int:
     degraded = used_moma_capture or used_met_opera_capture or used_met_capture
     source_note = ""
     if used_moma_capture:
-        source_note = " from browser capture fallback (live empty)"
+        source_note = (" from committed fixture (live fetch disabled)" if not moma_live_enabled()
+                       else " from committed fixture (live 403/unverified — fixture kept)")
     elif used_met_opera_capture:
         source_note = " from committed fixture fallback (live empty)"
     elif used_met_capture:
