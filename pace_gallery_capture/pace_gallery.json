@@ -1,0 +1,49 @@
+{
+  "capturedAt": "2026-06-18",
+  "items": [
+    {
+      "title": "Mika Tajima: 37 Dimensions",
+      "venue_or_platform": "Pace Gallery",
+      "city": "New York",
+      "source_url": "https://www.pacegallery.com/exhibitions/mika-tajima-37-dimensions",
+      "external_id": "https://www.pacegallery.com/exhibitions/mika-tajima-37-dimensions",
+      "upcoming": false,
+      "date_start": "2026-06-27",
+      "date_label": "Jun 27 – Aug 15, 2026",
+      "date_precision": "exact"
+    },
+    {
+      "title": "Goodbye Sadness, Hello Sadness",
+      "venue_or_platform": "Pace Gallery",
+      "city": "New York",
+      "source_url": "https://www.pacegallery.com/exhibitions/goodbye-sadness-hello-sadness",
+      "external_id": "https://www.pacegallery.com/exhibitions/goodbye-sadness-hello-sadness",
+      "upcoming": false,
+      "date_start": "2026-07-04",
+      "date_label": "Jul 4 – Aug 23, 2026",
+      "date_precision": "exact"
+    },
+    {
+      "title": "Park Young Sook: When Form Meets Gesture",
+      "venue_or_platform": "Pace Gallery",
+      "city": "New York",
+      "source_url": "https://www.pacegallery.com/exhibitions/park-young-sook-when-form-meets-gesture",
+      "external_id": "https://www.pacegallery.com/exhibitions/park-young-sook-when-form-meets-gesture",
+      "upcoming": false,
+      "date_start": "2026-06-19",
+      "date_label": "Jun 19 – Aug 14, 2026",
+      "date_precision": "exact"
+    },
+    {
+      "title": "William Monk: Noon Day Night",
+      "venue_or_platform": "Pace Gallery",
+      "city": "New York",
+      "source_url": "https://www.pacegallery.com/exhibitions/william-monk-noon-day-night",
+      "external_id": "https://www.pacegallery.com/exhibitions/william-monk-noon-day-night",
+      "upcoming": false,
+      "date_start": "2026-06-30",
+      "date_label": "Jun 30 – Aug 16, 2026",
+      "date_precision": "exact"
+    }
+  ]
+}

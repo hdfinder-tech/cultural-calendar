@@ -1,0 +1,38 @@
+{
+  "capturedAt": "2026-06-18",
+  "items": [
+    {
+      "title": "Cecilia Vicuña Quipu of Encounters: The Dream of Water",
+      "venue_or_platform": "MOCA",
+      "city": "Los Angeles",
+      "source_url": "https://www.moca.org/exhibition/cecilia-vicuna",
+      "external_id": "https://www.moca.org/exhibition/cecilia-vicuna",
+      "upcoming": false,
+      "date_start": "2026-11-15",
+      "date_label": "Nov 15, 2026",
+      "date_precision": "exact"
+    },
+    {
+      "title": "Julian Charrière",
+      "venue_or_platform": "MOCA",
+      "city": "Los Angeles",
+      "source_url": "https://www.moca.org/exhibition/julian-charriere",
+      "external_id": "https://www.moca.org/exhibition/julian-charriere",
+      "upcoming": false,
+      "date_start": "2026-11-15",
+      "date_label": "Nov 15, 2026",
+      "date_precision": "exact"
+    },
+    {
+      "title": "Afterlives: Japanese American Artists and the Postwar Era",
+      "venue_or_platform": "MOCA",
+      "city": "Los Angeles",
+      "source_url": "https://www.moca.org/exhibition/afterlives",
+      "external_id": "https://www.moca.org/exhibition/afterlives",
+      "upcoming": false,
+      "date_start": "2027-02-28",
+      "date_label": "Feb 28 – Sept 12, 2027",
+      "date_precision": "exact"
+    }
+  ]
+}

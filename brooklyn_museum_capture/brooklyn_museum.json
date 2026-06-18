@@ -1,0 +1,38 @@
+{
+  "capturedAt": "2026-06-18",
+  "items": [
+    {
+      "title": "Hopi Kachina Dolls: Blessings for a Balanced World",
+      "venue_or_platform": "Brooklyn Museum",
+      "city": "New York",
+      "source_url": "https://www.brooklynmuseum.org/exhibitions/hopi-kachina-dolls",
+      "external_id": "https://www.brooklynmuseum.org/exhibitions/hopi-kachina-dolls",
+      "upcoming": false,
+      "date_start": "2026-10-02",
+      "date_label": "October 2, 2026–April 18, 2027",
+      "date_precision": "exact"
+    },
+    {
+      "title": "Cézanne to Modigliani: Gifts of Modern Art from the Pearlman Collection",
+      "venue_or_platform": "Brooklyn Museum",
+      "city": "New York",
+      "source_url": "https://www.brooklynmuseum.org/exhibitions/pearlman-collection",
+      "external_id": "https://www.brooklynmuseum.org/exhibitions/pearlman-collection",
+      "upcoming": false,
+      "date_start": "2026-10-02",
+      "date_label": "October 2, 2026–April 18, 2027",
+      "date_precision": "exact"
+    },
+    {
+      "title": "Art of Manga",
+      "venue_or_platform": "Brooklyn Museum",
+      "city": "New York",
+      "source_url": "https://www.brooklynmuseum.org/exhibitions/manga",
+      "external_id": "https://www.brooklynmuseum.org/exhibitions/manga",
+      "upcoming": false,
+      "date_start": "2026-10-03",
+      "date_label": "October 3, 2026–January 31, 2027",
+      "date_precision": "exact"
+    }
+  ]
+}

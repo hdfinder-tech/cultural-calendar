@@ -1,0 +1,45 @@
+{
+  "capturedAt": "2026-06-18",
+  "items": [
+    {
+      "title": "Arthur Jafa: I Am Tony",
+      "date_start": "2026-09-25",
+      "date_label": "Sep 25, 2026",
+      "date_precision": "exact",
+      "venue_or_platform": "New Museum",
+      "city": "New York",
+      "source_url": "https://www.newmuseum.org/exhibition/arthur-jafa-i-am-tony",
+      "external_id": "https://www.newmuseum.org/exhibition/arthur-jafa-i-am-tony"
+    },
+    {
+      "title": "Diego Marcon: Arrivederci, Piggies!",
+      "date_start": "2026-09-25",
+      "date_label": "Sep 25, 2026",
+      "date_precision": "exact",
+      "venue_or_platform": "New Museum",
+      "city": "New York",
+      "source_url": "https://www.newmuseum.org/exhibition/diego-marcon-arrivederci-piggies",
+      "external_id": "https://www.newmuseum.org/exhibition/diego-marcon-arrivederci-piggies"
+    },
+    {
+      "title": "The Bowery: Devil’s Mile",
+      "date_start": "2026-09-25",
+      "date_label": "Sep 25, 2026",
+      "date_precision": "exact",
+      "venue_or_platform": "New Museum",
+      "city": "New York",
+      "source_url": "https://www.newmuseum.org/exhibition/the-bowery-devils-mile",
+      "external_id": "https://www.newmuseum.org/exhibition/the-bowery-devils-mile"
+    },
+    {
+      "title": "Sixth New Museum Triennial: The Outside Expands",
+      "date_start": "2027-01-01",
+      "date_label": "Jan 1, 2027",
+      "date_precision": "exact",
+      "venue_or_platform": "New Museum",
+      "city": "New York",
+      "source_url": "https://www.newmuseum.org/exhibition/sixth-new-museum-triennial-the-outside-expands",
+      "external_id": "https://www.newmuseum.org/exhibition/sixth-new-museum-triennial-the-outside-expands"
+    }
+  ]
+}

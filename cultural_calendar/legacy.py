@@ -211,6 +211,11 @@ def merge_by_title(base: list[dict[str, Any]], extra: list[dict[str, Any]]) -> l
     return out
 
 
+def museum_cache_path(source_id: str) -> Path:
+    """Committed last-good cache for a museum-framework source, self-refreshed on a clean fetch."""
+    return ROOT / f"{source_id}_capture" / f"{source_id}.json"
+
+
 CACHE_MISS_LIMIT = 2  # retire a cache-only row after this many consecutive complete-fetch misses
 
 
@@ -2643,9 +2648,10 @@ def import_lacma(conn: sqlite3.Connection, source: Source) -> int:
         r'field-end-date">\s*<div class="field-content">\s*([^<]+?)\s*</div>',
         re.S,
     )
+    matched = card.findall(text)
     count = 0
     seen: set[str] = set()
-    for href, title_raw, start_str, end_str in card.findall(text):
+    for href, title_raw, start_str, end_str in matched:
         title = strip_tags(title_raw)
         if not title:
             continue
@@ -2670,7 +2676,12 @@ def import_lacma(conn: sqlite3.Connection, source: Source) -> int:
         upsert_item(conn, source, item)
         ensure_model_enrichment_placeholder(conn, source, item)
         count += 1
-    record_run(conn, source, "ok", f"imported {count} upcoming exhibitions", raw_path)
+    # Shape sanity: matching 0 cards means the page changed, not that there's nothing upcoming
+    # (a legit empty still matches current-show cards). Flag it instead of a silent zero.
+    if not matched:
+        record_run(conn, source, "error", "0 cards matched — page shape changed (check parser)", raw_path)
+    else:
+        record_run(conn, source, "ok", f"imported {count} upcoming exhibitions ({len(matched)} listed)", raw_path)
     return count
 
 
@@ -2968,7 +2979,10 @@ def import_html_source(conn: sqlite3.Connection, source: Source) -> int:
     # Fixture-backed sources tolerate ANY fetch failure (a 403/429/challenge, whether requests
     # raises or curl rejects a non-2xx) and fall back to their committed fixture below — a failed
     # fetch must serve stale data, never go empty.
-    fixture_backed = {"moma_exhibitions", "met_exhibitions", "met_opera_2026_27"}
+    # Fetch-tolerant sources keep a committed last-good cache; a 403/429/challenge serves it
+    # rather than zeroing. The museum-framework sources are included (they 429 from CI IPs like
+    # the Met), so e.g. a Brooklyn Museum rate-limit no longer wipes the venue.
+    fixture_backed = {"moma_exhibitions", "met_exhibitions", "met_opera_2026_27"} | set(MUSEUMS)
     try:
         text = fetch_text(source.url)
         raw_path = save_raw(source, text)
@@ -2977,14 +2991,33 @@ def import_html_source(conn: sqlite3.Connection, source: Source) -> int:
             raise
         text = ""
     if source.id in MUSEUMS:
-        if MUSEUMS[source.id].get("json"):
+        # Distinguish a real empty (cards present, none upcoming — legitimate) from a failed
+        # fetch / broken page shape (no cards). Only the latter falls back to the cache, so a
+        # legitimate "nothing upcoming" doesn't resurrect stale shows.
+        if not text:
+            cards, items = 0, []
+        elif MUSEUMS[source.id].get("json"):
             items = parse_museum_json(source, text)
+            cards = len(items)
         else:
-            items = hydrate_museum_dates(conn, source, parse_museum_listing(source, text))
+            listing = parse_museum_listing(source, text)
+            cards = len(listing)
+            items = hydrate_museum_dates(conn, source, listing)
+        cache_path = museum_cache_path(source.id)
+        if items:
+            save_capture_fixture(cache_path, items)
+            status, note = "ok", f"parsed {len(items)} upcoming exhibitions"
+        elif cards == 0:  # fetch failed or page shape broke — serve last-good cache
+            items = load_capture_fixture(cache_path)
+            status = "stale" if items else "ok"
+            note = (f"{len(items)} from last-good cache — fetch failed/empty page (stale)"
+                    if items else "0 — fetch failed/empty and no cache")
+        else:  # clean fetch, cards present, none upcoming — a legitimate empty
+            status, note = "ok", f"0 upcoming ({cards} current shows listed)"
         for item in items:
             upsert_item(conn, source, item)
             ensure_model_enrichment_placeholder(conn, source, item)
-        record_run(conn, source, "ok", f"parsed {len(items)} upcoming exhibitions", raw_path)
+        record_run(conn, source, status, note, raw_path)
         return len(items)
     parser_by_source = {
         "broadway_org": parse_broadway_org,
