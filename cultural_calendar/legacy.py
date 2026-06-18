@@ -3178,6 +3178,10 @@ def hydrate_broadway_org_dates(conn: sqlite3.Connection, source: Source, items: 
         principals = extract_theatre_principals(html_text)
         if principals:
             item["people"] = principals
+        # Name the actual theatre (like Off-Broadway does) instead of the generic "Broadway".
+        theatre = re.search(r'aside-block-theatre.*?<h5>\s*([^<]+?)\s*</h5>', html_text, re.S)
+        if theatre:
+            item["venue_or_platform"] = normalize_space(html.unescape(theatre.group(1)))
 
 
 def enrich_detail_pages(conn: sqlite3.Connection, source: Source, items: list[dict[str, Any]], limit: int = 25) -> None:
