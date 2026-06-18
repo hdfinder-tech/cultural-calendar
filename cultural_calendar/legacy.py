@@ -2236,7 +2236,12 @@ def import_with_cache(conn: sqlite3.Connection, source: Source, cache_path: Path
             f"{len(cache)} from last-good cache — fetch blocked/invalid (stale)", None
     else:
         raw_path = save_raw(source, text)
-        live = parser(source, text)
+        try:
+            live = parser(source, text)
+        except Exception as exc:  # a parser crash must not zero a cache-backed source either
+            live, parse_error = [], str(exc)
+        else:
+            parse_error = None
         if live:
             # Complete clean fetch: live wins, and cache-only rows the source no longer lists age
             # out after CACHE_MISS_LIMIT misses (cancellations/renames) instead of living forever.
@@ -2244,8 +2249,9 @@ def import_with_cache(conn: sqlite3.Connection, source: Source, cache_path: Path
             save_capture_fixture(cache_path, items)
             status, note = "ok", f"imported {len(live)} upcoming exhibitions ({len(items)} after cache merge)"
         elif cache:
-            items = cache  # clean fetch parsed nothing — suspicious; serve cache, don't age
-            status, note = "stale", f"{len(cache)} from cache — clean fetch parsed nothing (check parser/shape)"
+            items = cache  # parsed nothing / parser crashed — serve cache, don't age or overwrite
+            reason = f"parser error: {parse_error}" if parse_error else "clean fetch parsed nothing (check parser/shape)"
+            status, note = "stale", f"{len(cache)} from cache — {reason}"
         else:
             items = []
             status, note = "ok", "0 — clean fetch, nothing upcoming"

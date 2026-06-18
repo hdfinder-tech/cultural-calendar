@@ -113,3 +113,23 @@ def test_fixture_backed_source_survives_fetch_error(tmp_path, monkeypatch):
         "select status from source_runs where source_id='met_opera_2026_27' order by id desc limit 1"
     ).fetchone()[0]
     assert status == "stale"
+
+
+def test_import_with_cache_survives_parser_crash(tmp_path, monkeypatch):
+    """A parser exception must serve the cache (stale), not zero the source."""
+    monkeypatch.setattr(L, "today", lambda: dt.date(2026, 6, 16))
+    monkeypatch.setattr(L, "DB_PATH", tmp_path / "t.db")
+    monkeypatch.setattr(L, "save_raw", lambda source, text: None)
+    monkeypatch.setattr(L, "fetch_valid_page", lambda url, must_contain=(): "VALID PAGE")
+    cache_path = tmp_path / "cache.json"
+    cache_path.write_text(json.dumps({"capturedAt": "2026-06-16", "items": [_item("Kept", "2026-10-01", "c", "k")]}))
+
+    def boom(source, text):
+        raise ValueError("parser blew up")
+
+    conn = L.connect()
+    src = Source(id="t", name="T", category="art", type="html", url="u")
+    n = L.import_with_cache(conn, src, cache_path, boom)
+    assert n == 1                                         # cache served, not zero
+    status = conn.execute("select status from source_runs where source_id='t' order by id desc limit 1").fetchone()[0]
+    assert status == "stale"
