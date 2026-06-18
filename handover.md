@@ -1,6 +1,106 @@
 # Cultural Calendar Handover
 
-Last updated: 2026-06-14
+Last updated: 2026-06-18
+
+---
+
+## CURRENT STATE — 2026-06-18 (read this first; supersedes older sections below)
+
+### Where the code lives and how it ships
+- **It is now a git repo** (the "no Git repository" note later in this file is stale).
+  GitHub: `culture-calendar/culture-calendar.github.io`, live at
+  **https://culture-calendar.github.io**. Local clone: `/Users/henryfinder/Documents/Cultural Calendar 2`.
+- **Push** over HTTPS as `hdfinder-tech` via `gh`. (The iMac's SSH keys are
+  `hdfinder-tech/frontlist` *deploy keys* and cannot push here — use `gh`.)
+- **A push does NOT deploy.** Deploy is a GitHub Action:
+  `gh workflow run weekly-refresh.yml --ref main`. CI builds the DB fresh each run
+  (`data/` is gitignored), runs tests, renders the HTML, and publishes to Pages.
+- **The committed fixtures/caches are the artifact CI consumes** for bot-walled venues
+  (see the integrity rule below).
+
+### Engine layout (the package, not `toy_calendar.py`)
+- `cultural_calendar/legacy.py` (~3,500 lines) — the engine: every `parse_*`/`import_*`,
+  date helpers, credits, `render_html`, the cache/integrity helpers.
+- `cultural_calendar/core/config.py` — paths, `Source`, `today()` (Eastern-anchored),
+  `end_date()`, `load_sources`, all fixture/cache path constants.
+- `cultural_calendar/registry.py` — id → (tactic, importer, `EXPECTED_ROWS` health range).
+- `sources.json` — the 35-source list. `cli.py` / `__main__.py` — run loop.
+- `tests/` — **46 pytest tests, all offline/deterministic.** `python3 -m pytest`.
+
+### Horizon (changed): rolling 18 months
+`config.end_date()` is a **rolling ~18-month** window (end-of-month), floored at 2026-12-31,
+overridable with the `CALENDAR_END_DATE` env var (tests pin it for determinism). The old
+"hardcoded 2026-12-31" notes below are superseded.
+
+### The integrity rule (central — do not regress)
+**A failed/blocked/truncated/rate-limited fetch is STALE (serve the committed fixture or
+last-good cache), NEVER empty.** Bot-walled venues 403/429 CI's datacenter IP; we serve their
+committed data labeled "stale" rather than zeroing the venue. We deliberately do **not** fight
+WAFs with header games — the levers are an off-CI refresh host or permission (below).
+
+### Run commands (current)
+```bash
+python3 -m cultural_calendar                          # full refresh + render
+python3 -m cultural_calendar --source met_exhibitions # one source
+python3 -m pytest                                     # 46 tests
+CALENDAR_END_DATE=2027-12-31 python3 -m cultural_calendar   # horizon override
+MOMA_LIVE=1 python3 -m cultural_calendar --source moma_exhibitions  # MoMA live, non-blocked host only
+git push origin main && gh workflow run weekly-refresh.yml --ref main   # deploy (push alone won't)
+```
+`TMDB_API_KEY` lives in `~/.zshrc` (interactive shells inherit it; CI uses a repo secret;
+never write it into files). Carnegie's Algolia key is a public referer-restricted client key
+(fine hardcoded, with comment).
+
+### What changed this session (2026-06-18)
+1. **The Met museum — recover year-less "–Ongoing" rows.** The Met's *Upcoming* section
+   printed "A Lasting Legacy … July 25-Ongoing" with **no year**, so `detect_date_label`
+   couldn't anchor it and the row vanished (4 of 5 shown). Fix: inside the `#upcoming`
+   section the opening is future by definition, so recover the Month/Day from the article
+   text and infer the next occurrence (keeping the raw string as a review note). Now 5 rows;
+   committed fixture refreshed. (metmuseum 429s CI → serves the 5-row fixture, "stale".)
+2. **TMDb — per-month horizon pass.** A single `popularity.desc` cut capped at 50 clustered
+   near-term and dropped low-buzz films 12–18 months out (e.g. Dec-2026: Angry Birds 3,
+   Werwulf — both in TMDb). Now: keep the global popularity slate, then walk the horizon
+   month by month taking each month's top US theatrical/limited releases, deduped by id.
+   Constants `TMDB_GLOBAL_FILMS=50`, `TMDB_PER_MONTH=8`; health range widened to (15, 200).
+   **Live count is ~179 films (was 50). OPEN QUESTION (user to decide): tighten/taper the
+   density** — options were taper-by-horizon (~110–120), keep flat 179, or flat ~5/month.
+3. **MoMA — fixture-backed source + flag-gated live scraper.** moma.org WAF-403s our CI and
+   dev hosts. The committed fixture is now the **source of truth** (9 shows). The live
+   scraper is behind **`MOMA_LIVE` (default off)** and may override the fixture **only** when
+   the fetched doc proves it's the real index: both headings (`Upcoming exhibitions` ..
+   `Installations and projects`) + an in-section `/calendar/exhibitions/<id>` link. It parses
+   only that section; a 403/shell/unverified parse leaves the fixture untouched; a verified
+   fetch refreshes it. Tested against `tests/fixtures/moma_index.html` (**swap this for a
+   real saved capture** when you can fetch the index from a non-blocked host).
+
+### "Source runs — 6 of 35 stale or unavailable": what it means
+The 6 are **The Met Exhibitions, Metropolitan Opera, MoMA, Brooklyn Museum, Park Avenue
+Armory, Serpentine.** "**stale**" here means *served from the committed fixture / last-good
+cache because the live fetch from CI's datacenter IP was bot-walled/rate-limited* (MoMA:
+deliberately, live disabled). **It does not mean empty or missing** — all six carry current
+data (Met 5, Met Opera 22, MoMA 9, Brooklyn 3, Armory 9, Serpentine 1).
+
+- **The count won't fall from code changes** — it tracks CI's IP reputation / WAF behavior,
+  which our parser/cache code can't change.
+- **Our work improved the content + integrity behind the labels, not the count:** the Met
+  went 4→5; Brooklyn went 0→3 (it used to *zero out* on a 429); Met Opera no longer risks a
+  zeroed season; MoMA can no longer be emptied or corrupted by a partial parse.
+- **Only two levers turn these green:** (a) run the refresh from a **non-blocked host**
+  (residential IP — the "off-CI refresh host"), which fetches live, refreshes the committed
+  fixtures/caches; then commit + push + deploy; or (b) obtain **permission/allowlisting** from
+  the venue. Header games are explicitly out of scope.
+
+### Off-CI refresh model (how to flip stale→fresh content)
+On a non-blocked machine: `export TMDB_API_KEY=…` (and optionally `MOMA_LIVE=1`),
+`python3 -m cultural_calendar`, then commit the refreshed fixtures/caches, push, and run the
+deploy workflow. CI keeps serving whatever was last committed.
+
+### Other handoff docs
+`RESUME.md` (longer narrative handoff), `REVIEW.md` (third-party reviewer orientation),
+`SKILL.md` (operating skill: rolling-horizon, international-art, live-vs-fixture).
+
+---
 
 ## Codebase Architecture (redesigned 2026-06-14)
 
@@ -237,8 +337,8 @@ sqlite3 data/calendar.db "select count(*) from items where category='theatre' an
 ```
 
 **Known drift to watch:** site redesigns break HTML parsers (re-inspect selectors);
-embedded API keys can rotate (rediscover in browser); `end_date()` is hardcoded
-`2026-12-31` — bump it as the horizon advances.
+embedded API keys can rotate (rediscover in browser). *(Update 2026-06-18: `end_date()` is no
+longer hardcoded — it's a rolling ~18-month window, override with `CALENDAR_END_DATE`.)*
 
 ## Workspace
 
@@ -254,7 +354,8 @@ This folder was seeded from the earlier prototype at:
 /Users/henryfinder/Documents/Cultural Calendar
 ```
 
-There is no Git repository in the active workspace.
+**(Superseded — see CURRENT STATE at top.)** This workspace is now a git clone of
+`culture-calendar/culture-calendar.github.io`; push via `gh`, deploy via `weekly-refresh.yml`.
 
 ## Project Goal
 
