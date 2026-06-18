@@ -13,6 +13,16 @@ def test_every_enabled_source_has_plugin_and_tactic():
         assert callable(plugin.importer)
 
 
+def test_sources_json_type_matches_registry_tactic():
+    """sources.json `type` is informational, but must not contradict the real dispatch tactic
+    (api↔json_api; html↔html/capture/embedded_json) — it's a handoff artifact."""
+    allowed = {"api": {"json_api"}, "html": {"html", "capture", "embedded_json"}}
+    for source in load_sources():
+        tactic = plugin_for(source).tactic
+        assert tactic in allowed.get(source.type, set()), \
+            f"{source.id}: type={source.type} contradicts tactic={tactic}"
+
+
 def test_expected_rows_cover_every_enabled_source():
     ids = {s.id for s in load_sources()}
     missing = ids - set(EXPECTED_ROWS)

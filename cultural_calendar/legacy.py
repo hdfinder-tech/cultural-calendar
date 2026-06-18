@@ -2329,6 +2329,22 @@ def parse_armory_season(text: str) -> list[dict[str, Any]]:
     return items
 
 
+def armory_fieldwise_merge(cache: list[dict[str, Any]], live: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Merge the Armory current-season parse into the authoritative cache fieldwise: for a show in
+    both, refresh the volatile fields (date, label, precision, URL) from live but KEEP the cache's
+    hand-curated discipline category (the live listing doesn't carry it). New live shows are added."""
+    by_title = {normalized_dedupe_title(c["title"]): dict(c) for c in cache}
+    for lv in live:
+        key = normalized_dedupe_title(lv["title"])
+        if key in by_title:
+            for field in ("date_start", "date_label", "date_precision", "source_url"):
+                if lv.get(field):
+                    by_title[key][field] = lv[field]
+        else:
+            by_title[key] = dict(lv)
+    return list(by_title.values())
+
+
 def import_armory(conn: sqlite3.Connection, source: Source) -> int:
     """Park Avenue Armory. One request to the current-season page (no detail-page fan-out, no
     ticketing pages). The site is Cloudflare-gated, so on a 403/429/challenge or an empty parse
@@ -2345,7 +2361,7 @@ def import_armory(conn: sqlite3.Connection, source: Source) -> int:
         items, status = cache, "stale"
         note = f"{len(cache)} served from last-good cache — live fetch blocked (data may be stale)"
     else:
-        items = merge_by_title(cache, parse_armory_season(text))
+        items = armory_fieldwise_merge(cache, parse_armory_season(text))
         added = len(items) - len(cache)
         status = "ok"
         note = f"last-good cache{f' + {added} new from current-season page' if added else ''} ({len(items)})"

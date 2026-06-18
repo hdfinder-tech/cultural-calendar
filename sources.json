@@ -76,7 +76,7 @@
     "id": "nyphil_concerts",
     "name": "New York Philharmonic",
     "category": "music",
-    "type": "html",
+    "type": "api",
     "url": "https://www.nyphil.org/concerts-tickets/calendar/",
     "enabled": true
   },
@@ -84,7 +84,7 @@
     "id": "carnegie_hall",
     "name": "Carnegie Hall",
     "category": "music",
-    "type": "html",
+    "type": "api",
     "url": "https://www.carnegiehall.org/events",
     "enabled": true
   },

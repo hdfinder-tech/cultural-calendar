@@ -80,3 +80,16 @@ def test_age_cache_retires_after_two_misses():
     out2 = L.age_cache(live, out1)                           # feed aged cache back: 2nd miss
     assert not any(i["title"] == "Gone" for i in out2)       # retired after two misses
     assert any(i["title"] == "Stay" for i in out2)
+
+
+def test_armory_fieldwise_keeps_category_refreshes_date():
+    cache = [{"title": "Carlo Vistoli", "category": "music", "date_start": "2026-09-10",
+              "date_label": "old", "source_url": "old"}]
+    live = [{"title": "Carlo Vistoli", "date_start": "2026-09-12", "date_label": "new",
+             "source_url": "new"},
+            {"title": "New Show", "date_start": "2026-10-01"}]
+    out = {i["title"]: i for i in L.armory_fieldwise_merge(cache, live)}
+    assert out["Carlo Vistoli"]["category"] == "music"        # curated category preserved
+    assert out["Carlo Vistoli"]["date_start"] == "2026-09-12" # date refreshed from live
+    assert out["Carlo Vistoli"]["date_label"] == "new"
+    assert "New Show" in out                                  # new live show added
