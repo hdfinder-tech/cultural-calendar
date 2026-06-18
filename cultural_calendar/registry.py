@@ -48,7 +48,7 @@ _HTML_TACTIC = {
 # tight enough to catch a source that breaks to 0 or balloons.
 EXPECTED_ROWS: dict[str, tuple[int, int]] = {
     # Upper bounds widened for the rolling ~18-month horizon (more months of programming).
-    "tmdb_movies": (15, 52), "tvmaze_full_schedule": (40, 450),
+    "tmdb_movies": (15, 200), "tvmaze_full_schedule": (40, 450),
     "carnegie_hall": (20, 450), "metacritic_albums": (40, 520),
     "broadway_org": (1, 30), "playbill_broadway": (0, 30), "playbill_offbroadway": (3, 60),
     "bam_programs": (0, 12), "met_exhibitions": (1, 25), "moma_exhibitions": (0, 30),

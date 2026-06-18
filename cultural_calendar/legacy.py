@@ -2878,7 +2878,21 @@ def import_ibdb(conn: sqlite3.Connection, source: Source) -> int:
 # dumps, foreign-language titles with no real US release), so the cap doubles as a quality
 # gate. We also require an actual US theatrical/limited release (with_release_type 2|3) so a
 # culture desk sees what's reviewable here, not a worldwide release-date firehose.
-TMDB_MAX_FILMS = 50
+# The global popularity pass keeps the buzzy near-term slate; a per-month pass then walks the
+# whole horizon so far-out months keep their top releases instead of being crowded out (a
+# single popularity.desc cut clusters near-term and drops, e.g., Dec-2026 prestige titles).
+TMDB_GLOBAL_FILMS = 50
+TMDB_PER_MONTH = 8
+
+
+def _month_starts(start: dt.date, end: dt.date) -> list[dt.date]:
+    """First-of-month dates from start's month through end's month, inclusive."""
+    months: list[dt.date] = []
+    cursor = start.replace(day=1)
+    while cursor <= end:
+        months.append(cursor)
+        cursor = (cursor.replace(day=28) + dt.timedelta(days=7)).replace(day=1)
+    return months
 
 
 def import_tmdb(conn: sqlite3.Connection, source: Source) -> int:
@@ -2886,50 +2900,75 @@ def import_tmdb(conn: sqlite3.Connection, source: Source) -> int:
     if not token:
         record_run(conn, source, "skipped", f"missing {source.requires_env}")
         return 0
-    count = 0
-    page = 1
-    raw_path = None
-    while page <= 5 and count < TMDB_MAX_FILMS:
-        params = {
-            "region": "US",
-            "with_release_type": "2|3",  # 2 = limited theatrical, 3 = theatrical (US)
-            "release_date.gte": today().isoformat(),
-            "release_date.lte": end_date().isoformat(),
-            "sort_by": "popularity.desc",
-            "page": page,
-            "include_adult": "false",
-        }
-        text = fetch_text(source.url, params=params, headers={"Authorization": f"Bearer {token}"})
-        if page == 1:
-            raw_path = save_raw(source, text)
-        data = json.loads(text)
-        for movie in data.get("results", []):
-            if count >= TMDB_MAX_FILMS:
-                break
-            title = movie.get("title")
-            if not title:
-                continue
-            release_date = movie.get("release_date")
-            item = {
-                "title": title,
-                "date_start": release_date,
-                "date_precision": "exact" if release_date else "unknown",
-                "date_label": release_date,
-                "source_url": f"https://www.themoviedb.org/movie/{movie.get('id')}",
-                "external_id": str(movie.get("id")),
-                "description": movie.get("overview"),
-                "importance_score": int(movie.get("popularity") or 0),
+    seen: set[str] = set()
+    raw_holder: list[Path | None] = [None]
+
+    def harvest(window: dict[str, str], budget: int) -> None:
+        """Discover US theatrical/limited releases in a date window, most-popular first, and
+        upsert up to `budget` not-yet-seen films (each credit-enriched)."""
+        page = 1
+        added = 0
+        while page <= 5 and added < budget:
+            params = {
+                "region": "US",
+                "with_release_type": "2|3",  # 2 = limited theatrical, 3 = theatrical (US)
+                "sort_by": "popularity.desc",
+                "include_adult": "false",
+                "page": page,
+                **window,
             }
-            # Every kept film is credit-enriched (director/writer/cast) — no popularity cutoff.
-            if movie.get("id"):
-                item["people"] = tmdb_principals(movie["id"], token)
-            upsert_item(conn, source, item)
-            ensure_model_enrichment_placeholder(conn, source, item)
-            count += 1
-        if page >= int(data.get("total_pages", page)):
-            break
-        page += 1
-    record_run(conn, source, "ok", f"imported {count} films (top by popularity, all credited)", raw_path)
+            text = fetch_text(source.url, params=params, headers={"Authorization": f"Bearer {token}"})
+            if raw_holder[0] is None:
+                raw_holder[0] = save_raw(source, text)
+            data = json.loads(text)
+            results = data.get("results", [])
+            for movie in results:
+                if added >= budget:
+                    break
+                title = movie.get("title")
+                external_id = str(movie.get("id"))
+                if not title or external_id in seen:
+                    continue
+                seen.add(external_id)
+                release_date = movie.get("release_date")
+                item = {
+                    "title": title,
+                    "date_start": release_date,
+                    "date_precision": "exact" if release_date else "unknown",
+                    "date_label": release_date,
+                    "source_url": f"https://www.themoviedb.org/movie/{movie.get('id')}",
+                    "external_id": external_id,
+                    "description": movie.get("overview"),
+                    "importance_score": int(movie.get("popularity") or 0),
+                }
+                # Every kept film is credit-enriched (director/writer/cast) — no popularity cutoff.
+                if movie.get("id"):
+                    item["people"] = tmdb_principals(movie["id"], token)
+                upsert_item(conn, source, item)
+                ensure_model_enrichment_placeholder(conn, source, item)
+                added += 1
+            if not results or page >= int(data.get("total_pages", page)):
+                break
+            page += 1
+
+    horizon_end = end_date()
+    # Pass 1: globally most-popular upcoming films (near-term slate).
+    harvest({"release_date.gte": today().isoformat(), "release_date.lte": horizon_end.isoformat()},
+            TMDB_GLOBAL_FILMS)
+    # Pass 2: top releases month by month across the horizon (dedup is by external_id via `seen`).
+    for month in _month_starts(today(), horizon_end):
+        nxt = (month.replace(day=28) + dt.timedelta(days=7)).replace(day=1)
+        lo = max(month, today())
+        hi = min(nxt - dt.timedelta(days=1), horizon_end)
+        if lo > hi:
+            continue
+        harvest({"release_date.gte": lo.isoformat(), "release_date.lte": hi.isoformat()},
+                TMDB_PER_MONTH)
+
+    count = len(seen)
+    record_run(conn, source, "ok",
+               f"imported {count} films (popularity slate + per-month horizon, all credited)",
+               raw_holder[0])
     return count
 
 
