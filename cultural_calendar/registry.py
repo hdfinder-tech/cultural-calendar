@@ -68,7 +68,7 @@ EXPECTED_ROWS: dict[str, tuple[int, int]] = {
     "npg_london": (0, 20), "fondation_lv": (0, 20), "grand_palais": (0, 20),
     "centre_pompidou": (0, 20), "va_london": (0, 20), "mam_paris": (0, 20),
     "ocula": (0, 40), "marian_goodman": (0, 20), "lisson": (0, 20), "tanya_bonakdar": (0, 20),
-    "bargemusic": (0, 80), "joyce": (0, 30), "merkin": (0, 60), "alice_tully": (0, 60),
+    "bargemusic": (0, 80), "joyce": (0, 30), "merkin": (0, 160), "alice_tully": (0, 60),
 }
 
 

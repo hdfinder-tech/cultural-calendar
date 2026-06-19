@@ -15,7 +15,6 @@ import os
 import re
 import sqlite3
 import time
-from collections import Counter
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlencode, urljoin
@@ -1547,46 +1546,67 @@ def import_joyce(conn: sqlite3.Connection, source: Source) -> int:
     return import_with_cache(conn, source, JOYCE_CACHE, parse_joyce, must_contain=("/performances/",))
 
 
-def parse_merkin(source: Source, text: str) -> list[dict[str, Any]]:
-    """Merkin Hall (Kaufman Music Center). The calendar lists /mch/event/<slug> links; the
-    JS month-grid has no full dates, so hydrate each detail page and take its most-frequent
-    in-horizon ISO date (the event date; rare stray dates are outvoted)."""
-    items, seen = [], set()
-    for path in re.findall(r"/mch/event/[a-z0-9\-]+", text):
-        if path in seen:
+def _merkin_records(page_html: str) -> list[dict[str, Any]]:
+    """Parse the `<div class="event">` records on a Merkin buy-tickets list page: each carries
+    the event link, title (<h2><a>), an optional presenter, and a 'datetime' date inline."""
+    out = []
+    for block in re.split(r'<div class="event">', page_html)[1:]:
+        link = re.search(r"/mch/event/[a-z0-9\-]+", block)
+        title_m = re.search(r"<h2[^>]*>\s*<a[^>]*>(.*?)</a>", block, re.S)
+        date_m = re.search(rf"({MONTH_RE}\.?\s+\d{{1,2}},\s+20\d\d)", block)
+        if not (link and title_m and date_m):
             continue
-        seen.add(path)
-        try:
-            detail = fetch_text("https://www.kaufmanmusiccenter.org" + path)
-        except Exception:
-            continue
-        start = None
-        for iso, _ in Counter(re.findall(r"20\d\d-\d\d-\d\d", detail)).most_common():
-            try:
-                cand = dt.date.fromisoformat(iso)
-            except ValueError:
-                continue
-            if today() <= cand <= end_date():
-                start = cand
-                break
-        if not start:
-            continue
-        title = normalize_space(html.unescape((re.search(r"<title>([^<|]+)", detail) or [None, ""])[1]))
-        if not title:
-            continue
-        items.append({
-            "title": title, "category": "music", "date_start": start.isoformat(),
-            "date_label": format_us_date(start), "date_precision": "exact",
-            "venue_or_platform": "Merkin Hall", "city": "New York",
-            "source_url": "https://www.kaufmanmusiccenter.org" + path,
-            "external_id": "merkin:" + path, "description": "Merkin Hall, Kaufman Music Center",
-            "importance_score": 14,
+        presenter = re.search(r'class="kmc-presents[^"]*">\s*(.*?)\s*</div>', block, re.S)
+        out.append({
+            "path": link.group(0),
+            "title": normalize_space(strip_tags(html.unescape(title_m.group(1)))),
+            "date": parse_us_date(date_m.group(1)),
+            "presenter": normalize_space(strip_tags(presenter.group(1))) if presenter else "",
         })
+    return out
+
+
+def parse_merkin(source: Source, text: str) -> list[dict[str, Any]]:
+    """Merkin Hall (Kaufman Music Center) via the paginated buy-tickets list — record by record,
+    dates inline (no per-event hydration). Page 1 is the validated fetch; follow P20/P40/…
+    until a page has no records or its events run past the horizon."""
+    pages = [text]
+    for offset in range(20, 240, 20):  # safety cap ~12 pages
+        try:
+            pg = fetch_text(f"https://www.kaufmanmusiccenter.org/mch/buy-tickets-default/P{offset}/")
+        except Exception:
+            break
+        recs = _merkin_records(pg)
+        if not recs:
+            break
+        pages.append(pg)
+        # Stop once a whole page is past the horizon (list is chronological).
+        if all(r["date"] and r["date"] > end_date() for r in recs):
+            break
+    items, seen = [], set()
+    for pg in pages:
+        for rec in _merkin_records(pg):
+            start = rec["date"]
+            if not start or start < today() or start > end_date():
+                continue
+            if not rec["title"] or rec["path"] in seen:
+                continue
+            seen.add(rec["path"])
+            desc = "Merkin Hall, Kaufman Music Center"
+            if rec["presenter"]:
+                desc = f"{rec['presenter']} · {desc}"
+            items.append({
+                "title": rec["title"], "category": "music", "date_start": start.isoformat(),
+                "date_label": format_us_date(start), "date_precision": "exact",
+                "venue_or_platform": "Merkin Hall", "city": "New York",
+                "source_url": "https://www.kaufmanmusiccenter.org" + rec["path"],
+                "external_id": "merkin:" + rec["path"], "description": desc, "importance_score": 14,
+            })
     return items
 
 
 def import_merkin(conn: sqlite3.Connection, source: Source) -> int:
-    return import_with_cache(conn, source, MERKIN_CACHE, parse_merkin, must_contain=("/mch/event/",))
+    return import_with_cache(conn, source, MERKIN_CACHE, parse_merkin, must_contain=('class="event"',))
 
 
 def parse_alice_tully(source: Source, text: str) -> list[dict[str, Any]]:
