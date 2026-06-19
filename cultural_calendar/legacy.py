@@ -27,7 +27,7 @@ import requests
 # Migrated to the cultural_calendar package (behavior-preserving re-org); re-exported here
 # so this module stays runnable during the migration.
 from cultural_calendar.core.config import *  # noqa: F401,F403
-from cultural_calendar.core.config import ROOT, DATA_DIR, RAW_DIR, DETAIL_DIR, DB_PATH, SOURCES_PATH, HTML_PATH, MOMA_CAPTURE_LINKS, MET_CAPTURE, MET_OPERA_CAPTURE, ARMORY_CAPTURE, SERPENTINE_CAPTURE, VA_CACHE, TATE_MODERN_CACHE, TATE_BRITAIN_CACHE, FLV_CACHE, NPG_CAPTURE, GRAND_PALAIS_CAPTURE, POMPIDOU_CAPTURE, MAM_CAPTURE, FRICK_CAPTURE, OCULA_CAPTURE, MONTH_PATTERN, MONTH_RE, MONTH_NUMBERS, Source, today, end_date, load_sources
+from cultural_calendar.core.config import ROOT, DATA_DIR, RAW_DIR, DETAIL_DIR, DB_PATH, SOURCES_PATH, HTML_PATH, MOMA_CAPTURE_LINKS, MET_CAPTURE, MET_OPERA_CAPTURE, ARMORY_CAPTURE, SERPENTINE_CAPTURE, VA_CACHE, TATE_MODERN_CACHE, TATE_BRITAIN_CACHE, FLV_CACHE, NPG_CAPTURE, GRAND_PALAIS_CAPTURE, POMPIDOU_CAPTURE, MAM_CAPTURE, FRICK_CAPTURE, OCULA_CAPTURE, MARIAN_GOODMAN_CACHE, MONTH_PATTERN, MONTH_RE, MONTH_NUMBERS, Source, today, end_date, load_sources
 from cultural_calendar.core.html import normalize_space, strip_tags, LinkTextParser, ArticleParser, MetaParser  # noqa: F401
 
 
@@ -1160,7 +1160,7 @@ def parse_frick_capture(source: Source) -> list[dict[str, Any]]:
 OCULA_MAJOR_GALLERIES = {
     "david-zwirner": "David Zwirner", "hauser-wirth": "Hauser & Wirth", "white-cube": "White Cube",
     "lehmann-maupin": "Lehmann Maupin", "gladstone-gallery": "Gladstone",
-    "marian-goodman-gallery": "Marian Goodman", "matthew-marks-gallery": "Matthew Marks",
+    "matthew-marks-gallery": "Matthew Marks",  # Marian Goodman scraped directly (import_marian_goodman)
     "paula-cooper-gallery": "Paula Cooper", "303-gallery": "303 Gallery", "petzel": "Petzel",
     "sean-kelly": "Sean Kelly", "lisson-gallery": "Lisson Gallery", "sprueth-magers": "Sprüth Magers",
     "kasmin-gallery": "Kasmin", "luhring-augustine": "Luhring Augustine", "casey-kaplan": "Casey Kaplan",
@@ -1298,6 +1298,62 @@ def import_ocula(conn: sqlite3.Connection, source: Source) -> int:
         ensure_model_enrichment_placeholder(conn, source, item)
     record_run(conn, source, "ok", f"parsed {len(items)} NY gallery shows/fairs from Ocula capture")
     return len(items)
+
+
+def parse_marian_goodman(source: Source, text: str) -> list[dict[str, Any]]:
+    """Marian Goodman's own /exhibitions/ listing (server-rendered, scriptable — Ocula doesn't
+    surface its forthcoming NY shows). NY-only (gallery rule), future-opening only. Each card:
+    a `class="area"` block with location + heading_title + subheading, followed by a
+    `class="bottom"` div holding the date range."""
+    items: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for chunk in text.split('class="area"')[1:]:
+        href = re.search(r'<a href="([^"]+)"', chunk)
+        location = re.search(r'<span class="location">([^<]+)</span>', chunk)
+        artist = re.search(r'<span class="heading_title">([^<]*)</span>', chunk)
+        date = re.search(r'<div class="bottom[^"]*">\s*([^<]+?)\s*</div>', chunk)
+        if not (href and location and artist and date):
+            continue
+        if "new york" not in location.group(1).lower():
+            continue
+        parsed = parse_ocula_dates(normalize_space(html.unescape(date.group(1))))
+        if not parsed:
+            continue
+        start_iso, end_iso, label, precision = parsed
+        start = dt.date.fromisoformat(start_iso)
+        if start < today() or start > end_date():
+            continue
+        name = normalize_space(html.unescape(artist.group(1)))
+        sub = re.search(r'<div class="subheading[^"]*">([^<]*)</div>', chunk)
+        subtitle = normalize_space(html.unescape(sub.group(1))) if sub else ""
+        if not name:
+            continue
+        path = href.group(1)
+        ext = f"mariangoodman:{path}"
+        if ext in seen:
+            continue
+        seen.add(ext)
+        items.append({
+            "title": f"{name}: {subtitle}" if subtitle else name,
+            "category": "art",
+            "date_start": start_iso,
+            "date_end": end_iso,
+            "date_label": label,
+            "date_precision": precision,
+            "venue_or_platform": "Marian Goodman",
+            "city": "New York",
+            "source_url": "https://www.mariangoodman.com" + path,
+            "external_id": ext,
+            "description": "Marian Goodman Gallery, New York",
+            "importance_score": 14,
+        })
+    return items
+
+
+def import_marian_goodman(conn: sqlite3.Connection, source: Source) -> int:
+    """Marian Goodman NY forthcoming exhibitions — scriptable, cache-backed per the integrity rule."""
+    return import_with_cache(conn, source, MARIAN_GOODMAN_CACHE, parse_marian_goodman,
+                             must_contain=("heading_title",))
 
 
 def parse_met_exhibitions(source: Source, text: str, limit: int = 120) -> list[dict[str, Any]]:

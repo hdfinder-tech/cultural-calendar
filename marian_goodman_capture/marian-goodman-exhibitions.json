@@ -1,0 +1,35 @@
+{
+  "capturedAt": "2026-06-19",
+  "items": [
+    {
+      "title": "Matt Saunders: On an Overgrown Path",
+      "category": "art",
+      "date_start": "2026-06-25",
+      "date_end": "2026-08-07",
+      "date_label": "Jun 25, 2026 – Aug 7, 2026",
+      "date_precision": "exact",
+      "venue_or_platform": "Marian Goodman",
+      "city": "New York",
+      "source_url": "https://www.mariangoodman.com/exhibitions/630-matt-saunders-on-an-overgrown-path/",
+      "external_id": "mariangoodman:/exhibitions/630-matt-saunders-on-an-overgrown-path/",
+      "description": "Marian Goodman Gallery, New York",
+      "importance_score": 14,
+      "_misses": 0
+    },
+    {
+      "title": "Daniel Joseph Martinez: States of Being",
+      "category": "art",
+      "date_start": "2026-06-25",
+      "date_end": "2026-08-07",
+      "date_label": "Jun 25, 2026 – Aug 7, 2026",
+      "date_precision": "exact",
+      "venue_or_platform": "Marian Goodman",
+      "city": "New York",
+      "source_url": "https://www.mariangoodman.com/exhibitions/631-daniel-joseph-martinez-states-of-being/",
+      "external_id": "mariangoodman:/exhibitions/631-daniel-joseph-martinez-states-of-being/",
+      "description": "Marian Goodman Gallery, New York",
+      "importance_score": 14,
+      "_misses": 0
+    }
+  ]
+}

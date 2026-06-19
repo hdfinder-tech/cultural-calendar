@@ -177,6 +177,14 @@
     "enabled": true
   },
   {
+    "id": "marian_goodman",
+    "name": "Marian Goodman (NY)",
+    "category": "art",
+    "type": "html",
+    "url": "https://www.mariangoodman.com/exhibitions/",
+    "enabled": true
+  },
+  {
     "id": "new_museum",
     "name": "New Museum",
     "category": "art",
