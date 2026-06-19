@@ -38,6 +38,7 @@ _DEDICATED: dict[str, tuple[str, object, bool]] = {
     "bargemusic": ("json_api", legacy.import_bargemusic, False),
     "joyce": ("html", legacy.import_joyce, False),
     "merkin": ("html", legacy.import_merkin, False),
+    "alice_tully": ("html", legacy.import_alice_tully, False),
 }
 
 # Tactic label for the html-catch-all sources (for docs/health/tests clarity).

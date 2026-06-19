@@ -343,5 +343,13 @@
     "type": "html",
     "url": "https://www.kaufmanmusiccenter.org/mch/calendar/",
     "enabled": true
+  },
+  {
+    "id": "alice_tully",
+    "name": "Alice Tully Hall (CMS)",
+    "category": "music",
+    "type": "html",
+    "url": "https://www.chambermusicsociety.org/our-concerts/at-lincoln-center",
+    "enabled": true
   }
 ]

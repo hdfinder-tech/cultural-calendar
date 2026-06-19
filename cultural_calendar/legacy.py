@@ -1589,6 +1589,49 @@ def import_merkin(conn: sqlite3.Connection, source: Source) -> int:
     return import_with_cache(conn, source, MERKIN_CACHE, parse_merkin, must_contain=("/mch/event/",))
 
 
+def parse_alice_tully(source: Source, text: str) -> list[dict[str, Any]]:
+    """Alice Tully Hall via the Chamber Music Society's at-Lincoln-Center season. The listing
+    links to event pages; each carries swiftype metas (internal_title, start_date, venue).
+    Filtered to venue 'Alice Tully Hall' (CMS also plays the Rose Studio)."""
+    items, seen = [], set()
+    paths = re.findall(r'href="(/our-concerts/at-lincoln-center/events/[a-z0-9\-]+/[a-z0-9\-]+)"', text)
+    for path in paths:
+        if path in seen:
+            continue
+        seen.add(path)
+        try:
+            detail = fetch_text("https://www.chambermusicsociety.org" + path)
+        except Exception:
+            continue
+        metas = dict(re.findall(r'<meta class="swiftype" name="([^"]+)"[^>]*content="([^"]*)"', detail))
+        if "alice tully" not in metas.get("venue", "").lower():
+            continue
+        sd = metas.get("start_date", "")[:10]
+        if not re.match(r"\d{4}-\d{2}-\d{2}", sd):
+            continue
+        start = dt.date.fromisoformat(sd)
+        if start < today() or start > end_date():
+            continue
+        title = normalize_space(strip_tags(html.unescape(metas.get("internal_title") or "")))
+        if not title:
+            continue
+        items.append({
+            "title": title, "category": "music", "date_start": sd,
+            "date_label": format_us_date(start), "date_precision": "exact",
+            "venue_or_platform": "Alice Tully Hall", "city": "New York",
+            "source_url": "https://www.chambermusicsociety.org" + path,
+            "external_id": "alicetully:" + path,
+            "description": "Alice Tully Hall, Lincoln Center (Chamber Music Society)",
+            "importance_score": 15,
+        })
+    return items
+
+
+def import_alice_tully(conn: sqlite3.Connection, source: Source) -> int:
+    return import_with_cache(conn, source, LINCOLN_CACHE, parse_alice_tully,
+                             must_contain=("/our-concerts/at-lincoln-center/events/",))
+
+
 
 
 def parse_met_exhibitions(source: Source, text: str, limit: int = 120) -> list[dict[str, Any]]:
@@ -2792,7 +2835,7 @@ def import_with_cache(conn: sqlite3.Connection, source: Source, cache_path: Path
             # out after CACHE_MISS_LIMIT misses (cancellations/renames) instead of living forever.
             items = age_cache(live, cache)
             save_capture_fixture(cache_path, items)
-            status, note = "ok", f"imported {len(live)} upcoming exhibitions ({len(items)} after cache merge)"
+            status, note = "ok", f"imported {len(live)} upcoming entries ({len(items)} after cache merge)"
         elif cache:
             items = cache  # parsed nothing / parser crashed — serve cache, don't age or overwrite
             reason = f"parser error: {parse_error}" if parse_error else "clean fetch parsed nothing (check parser/shape)"
