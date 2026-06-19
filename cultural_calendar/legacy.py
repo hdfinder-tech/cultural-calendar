@@ -1649,6 +1649,31 @@ def extract_exhibition_window(text: str) -> tuple[dt.date | None, str | None]:
     return None, None
 
 
+def extract_jsonld_dates(html_text: str) -> tuple[dt.date | None, dt.date | None]:
+    """Pull (start, end) from a detail page's JSON-LD ExhibitionEvent — the most reliable
+    museum date source (avoids scraping prose and the wrong on-page dates, e.g. an old
+    same-artist show). Returns (None, None) when there's no usable startDate."""
+    for m in re.finditer(r'<script[^>]*type="application/ld\+json"[^>]*>(.*?)</script>', html_text, re.S):
+        try:
+            data = json.loads(m.group(1))
+        except ValueError:
+            continue
+        for obj in (data if isinstance(data, list) else [data]):
+            if not isinstance(obj, dict) or not obj.get("startDate"):
+                continue
+            try:
+                start = dt.date.fromisoformat(str(obj["startDate"])[:10])
+            except ValueError:
+                continue
+            end = None
+            try:
+                end = dt.date.fromisoformat(str(obj.get("endDate"))[:10]) if obj.get("endDate") else None
+            except ValueError:
+                end = None
+            return start, end
+    return None, None
+
+
 def parse_museum_listing(source: Source, text: str) -> list[dict[str, Any]]:
     config = MUSEUMS[source.id]
     # Treat a dedicated upcoming page (config "upcoming") or an explicit "Upcoming" section
@@ -1706,23 +1731,29 @@ def hydrate_museum_dates(conn: sqlite3.Connection, source: Source, items: list[d
         clean_title = re.split(r"\s*[|]\s*", clean_title)[0]  # drop " | Whitney Museum" suffix
         if clean_title and len(normalize_space(clean_title)) >= 3:
             item["title"] = normalize_space(clean_title)
+        # Prefer JSON-LD ExhibitionEvent dates — structured and reliable. A JSON-LD start in the
+        # past is authoritative: the show is already open (or a permanent/Artport piece), so drop
+        # it without falling through to prose scanning that could misread an unrelated date.
+        ld_start, ld_end = extract_jsonld_dates(html_text)
+        if ld_start:
+            if today() <= ld_start <= end_date():
+                item["date_start"] = ld_start.isoformat()
+                item["date_end"] = ld_end.isoformat() if ld_end else None
+                item["date_label"] = format_us_date(ld_start)
+                item["date_precision"] = "exact"
+                kept.append(item)
+            continue  # past/out-of-horizon JSON-LD start -> drop
         start, label = extract_exhibition_window(strip_tags(html_text)[:2500])
         if start and today() <= start <= end_date():
             item["date_start"] = start.isoformat()
             item["date_label"] = label or format_us_date(start)
             item["date_precision"] = "exact"
             kept.append(item)
-        elif not start and label and "2026" in label:  # future season within the 2026 horizon
+        elif not start and label and re.search(r"20\d\d", label):  # future season within the horizon
             item["date_label"] = label
             item["date_precision"] = "season"
             kept.append(item)
-        elif not start and item.get("upcoming"):
-            # Known-upcoming show with no announced date (from the listing's Upcoming
-            # section) — keep it as a horizon item rather than dropping it.
-            item["date_label"] = "Upcoming"
-            item["date_precision"] = "tba"
-            kept.append(item)
-        # else: no future signal (already open, past, or beyond 2026) -> drop
+        # else: no future signal (already open, past, undated, or beyond the horizon) -> drop
     return kept
 
 

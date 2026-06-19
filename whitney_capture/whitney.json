@@ -1,5 +1,5 @@
 {
-  "capturedAt": "2026-06-18",
+  "capturedAt": "2026-06-19",
   "items": [
     {
       "title": "Roy Lichtenstein",
@@ -8,98 +8,10 @@
       "source_url": "https://whitney.org/exhibitions/lichtenstein",
       "external_id": "https://whitney.org/exhibitions/lichtenstein",
       "upcoming": true,
-      "date_label": "Upcoming",
-      "date_precision": "tba"
-    },
-    {
-      "title": "Leo Castañeda: Camoflux Recall Grotto",
-      "venue_or_platform": "Whitney Museum",
-      "city": "New York",
-      "source_url": "https://whitney.org/exhibitions/camoflux-recall-grotto",
-      "external_id": "https://whitney.org/exhibitions/camoflux-recall-grotto",
-      "upcoming": true,
-      "date_label": "Upcoming",
-      "date_precision": "tba"
-    },
-    {
-      "title": "Memo Akten & Katie Hofstadter: The Thinking Ocean",
-      "venue_or_platform": "Whitney Museum",
-      "city": "New York",
-      "source_url": "https://whitney.org/exhibitions/the-thinking-ocean",
-      "external_id": "https://whitney.org/exhibitions/the-thinking-ocean",
-      "upcoming": true,
-      "date_label": "Upcoming",
-      "date_precision": "tba"
-    },
-    {
-      "title": "Robert Nideffer: 12 Years in Azeroth – The Journey Begins",
-      "venue_or_platform": "Whitney Museum",
-      "city": "New York",
-      "source_url": "https://whitney.org/exhibitions/12-years-in-azeroth",
-      "external_id": "https://whitney.org/exhibitions/12-years-in-azeroth",
-      "upcoming": true,
-      "date_label": "Upcoming",
-      "date_precision": "tba"
-    },
-    {
-      "title": "Frank WANG Yefeng: The Levitating Perils #2",
-      "venue_or_platform": "Whitney Museum",
-      "city": "New York",
-      "source_url": "https://whitney.org/exhibitions/frank-wang-yefeng",
-      "external_id": "https://whitney.org/exhibitions/frank-wang-yefeng",
-      "upcoming": true,
-      "date_label": "Upcoming",
-      "date_precision": "tba"
-    },
-    {
-      "title": "INFANT: BANNED SKILLS",
-      "venue_or_platform": "Whitney Museum",
-      "city": "New York",
-      "source_url": "https://whitney.org/exhibitions/banned-skills",
-      "external_id": "https://whitney.org/exhibitions/banned-skills",
-      "upcoming": true,
-      "date_label": "Upcoming",
-      "date_precision": "tba"
-    },
-    {
-      "title": "Nancy Baker Cahill: CENTO",
-      "venue_or_platform": "Whitney Museum",
-      "city": "New York",
-      "source_url": "https://whitney.org/exhibitions/cento",
-      "external_id": "https://whitney.org/exhibitions/cento",
-      "upcoming": true,
-      "date_label": "Upcoming",
-      "date_precision": "tba"
-    },
-    {
-      "title": "Taína H. Cruz: I Saw the Future and It Smiled Back",
-      "venue_or_platform": "Whitney Museum",
-      "city": "New York",
-      "source_url": "https://whitney.org/exhibitions/taina-h-cruz",
-      "external_id": "https://whitney.org/exhibitions/taina-h-cruz",
-      "upcoming": true,
-      "date_label": "Upcoming",
-      "date_precision": "tba"
-    },
-    {
-      "title": "David Hammons: Day’s End",
-      "venue_or_platform": "Whitney Museum",
-      "city": "New York",
-      "source_url": "https://whitney.org/exhibitions/david-hammons-days-end",
-      "external_id": "https://whitney.org/exhibitions/david-hammons-days-end",
-      "upcoming": true,
-      "date_label": "Upcoming",
-      "date_precision": "tba"
-    },
-    {
-      "title": "Rashid Johnson: New Poetry",
-      "venue_or_platform": "Whitney Museum",
-      "city": "New York",
-      "source_url": "https://whitney.org/exhibitions/rashid-johnson-new-poetry",
-      "external_id": "https://whitney.org/exhibitions/rashid-johnson-new-poetry",
-      "upcoming": true,
-      "date_label": "Upcoming",
-      "date_precision": "tba"
+      "date_start": "2026-10-14",
+      "date_end": "2027-05-01",
+      "date_label": "Oct 14, 2026",
+      "date_precision": "exact"
     }
   ]
 }

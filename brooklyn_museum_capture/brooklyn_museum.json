@@ -1,5 +1,5 @@
 {
-  "capturedAt": "2026-06-18",
+  "capturedAt": "2026-06-19",
   "items": [
     {
       "title": "Hopi Kachina Dolls: Blessings for a Balanced World",
@@ -33,6 +33,16 @@
       "date_start": "2026-10-03",
       "date_label": "October 3, 2026–January 31, 2027",
       "date_precision": "exact"
+    },
+    {
+      "title": "Arts of Africa",
+      "venue_or_platform": "Brooklyn Museum",
+      "city": "New York",
+      "source_url": "https://www.brooklynmuseum.org/exhibitions/arts-africa",
+      "external_id": "https://www.brooklynmuseum.org/exhibitions/arts-africa",
+      "upcoming": false,
+      "date_label": "fall 2027",
+      "date_precision": "season"
     }
   ]
 }
