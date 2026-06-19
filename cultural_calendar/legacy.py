@@ -3986,6 +3986,7 @@ def render_html(conn: sqlite3.Connection) -> None:
   var calEntries=arr(document.querySelectorAll('.cal-entry'));
   var containers=arr(document.querySelectorAll('.month,.cal-day,.hyear-group,.horizon-wrap'));
   var btns=arr(document.querySelectorAll('.catfilter button'));
+  var runs=document.querySelector('details.runs');
   function txt(e){return (e.textContent||'').toLowerCase();}
   function apply(){
     var q=query.replace(/^\\s+|\\s+$/g,'').toLowerCase();
@@ -4007,6 +4008,7 @@ def render_html(conn: sqlite3.Connection) -> None:
       var vis=arr(c.querySelectorAll('.catblock, .cal-entry')).some(function(k){return k.style.display!=='none';});
       c.style.display=vis?'':'none';
     });
+    if(runs){runs.style.display=(q||activeCat!=='all')?'none':'';}
   }
   btns.forEach(function(b){b.addEventListener('click',function(){
     activeCat=b.getAttribute('data-filter');
