@@ -3980,18 +3980,41 @@ def render_html(conn: sqlite3.Connection) -> None:
                   for c in cat_order) + "</div>")
     filter_js = """<script>
 (function(){
-  var btns=document.querySelectorAll('.catfilter button');
-  function apply(cat){
-    btns.forEach(function(x){x.classList.toggle('active', x.dataset.filter===cat);});
-    document.querySelectorAll('[data-cat]').forEach(function(el){
-      el.style.display=(cat==='all'||el.dataset.cat===cat)?'':'none';
+  var activeCat='all', query='';
+  var blocks=document.querySelectorAll('.catblock');
+  var calEntries=document.querySelectorAll('.cal-entry');
+  var containers=document.querySelectorAll('.month,.cal-day,.hyear-group,.horizon-wrap');
+  function txt(e){return (e.textContent||'').toLowerCase();}
+  function apply(){
+    var q=query.trim().toLowerCase();
+    blocks.forEach(function(b){
+      var catOk=(activeCat==='all'||b.dataset.cat===activeCat);
+      var any=false;
+      b.querySelectorAll('tbody tr, .cols2 .entry').forEach(function(en){
+        var vis=catOk && (!q || txt(en).indexOf(q)>=0);
+        en.style.display=vis?'':'none';
+        if(vis) any=true;
+      });
+      b.style.display=any?'':'none';
     });
-    document.querySelectorAll('.month,.cal-day,.hyear-group,.horizon-wrap').forEach(function(c){
-      var vis=Array.prototype.some.call(c.querySelectorAll('[data-cat]'),function(e){return e.style.display!=='none';});
+    calEntries.forEach(function(en){
+      var catOk=(activeCat==='all'||en.dataset.cat===activeCat);
+      en.style.display=(catOk && (!q || txt(en).indexOf(q)>=0))?'':'none';
+    });
+    containers.forEach(function(c){
+      var kids=c.querySelectorAll('.catblock, .cal-entry');
+      var vis=Array.prototype.some.call(kids,function(k){return k.style.display!=='none';});
       c.style.display=vis?'':'none';
     });
   }
-  btns.forEach(function(b){b.addEventListener('click',function(){apply(b.dataset.filter);});});
+  var btns=document.querySelectorAll('.catfilter button');
+  btns.forEach(function(b){b.addEventListener('click',function(){
+    activeCat=b.dataset.filter;
+    btns.forEach(function(x){x.classList.toggle('active',x===b);});
+    apply();
+  });});
+  var box=document.querySelector('.csearch');
+  if(box) box.addEventListener('input',function(){query=box.value;apply();});
 })();
 </script>"""
 
@@ -4033,6 +4056,9 @@ def render_html(conn: sqlite3.Connection) -> None:
       color: #6d685d; background: #f1eee4; border: 1px solid #cfc8b6; border-radius: 6px; }}
     .catfilter button.active {{ background: #3a5a66; color: #f6f4ee; border-color: #3a5a66; }}
     h3.hyear {{ font-size: 16px; text-transform: none; letter-spacing: .02em; color: #2a2722; margin: 20px 0 0; }}
+    .csearch {{ margin: 12px 0 2px; width: 100%; max-width: 360px; box-sizing: border-box; padding: 8px 12px;
+      font-family: inherit; font-size: 14px; color: #322f29; background: #fbfaf5; border: 1px solid #cfc8b6; border-radius: 7px; }}
+    .csearch:focus {{ outline: none; border-color: #3a5a66; }}
     /* View toggle (pure CSS): Editorial (month -> category) vs Calendar (day-by-day). */
     input.vtoggle {{ position: absolute; opacity: 0; pointer-events: none; }}
     .viewtoggle {{ margin: 18px 0 4px; display: inline-flex; border: 1px solid #cfc8b6; border-radius: 7px; overflow: hidden; }}
@@ -4070,6 +4096,7 @@ def render_html(conn: sqlite3.Connection) -> None:
       .cal-entry {{ flex-direction: column; gap: 1px; }}
       .cal-cat {{ flex: none; padding-top: 0; }}
       .catfilter button {{ padding: 6px 13px; }}
+      .csearch {{ max-width: none; font-size: 16px; }}
     }}
   </style>
 </head>
@@ -4080,6 +4107,7 @@ def render_html(conn: sqlite3.Connection) -> None:
   <input id="view-editorial" class="vtoggle" type="radio" name="view" checked>
   <input id="view-calendar" class="vtoggle" type="radio" name="view">
   <div class="viewtoggle"><label for="view-editorial">Editorial</label><label for="view-calendar">Calendar</label></div>
+  <input type="search" class="csearch" placeholder="Search titles, people, venues…" aria-label="Search the calendar" autocomplete="off">
   {filter_buttons}
   <div class="view view-editorial">{''.join(month_sections)}</div>
   <div class="view view-calendar">{calendar_html}</div>
