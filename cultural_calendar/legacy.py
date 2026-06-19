@@ -1782,14 +1782,32 @@ def import_abt(conn: sqlite3.Connection, source: Source) -> int:
     return import_with_cache(conn, source, ABT_CACHE, parse_abt, must_contain=("/event_dates/",))
 
 
-# Summer for the City is multidisciplinary; the per-event "discipline" icon drives the category.
-# The marquee-performances filter keeps only events carrying one of these (drops participatory
-# activities — Silent Disco, World at Play, kids storytime, wellbeing workshops — which have no
-# discipline icon).
-SFTC_DISCIPLINE_CATEGORY = {
-    "MUSIC": "music", "DANCE": "ballet", "FILM": "film",
-    "THEATER": "theatre", "THEATRE": "theatre", "COMEDY": "theatre",
+# Summer for the City is multidisciplinary. The marquee-performances filter is a denylist of the
+# festival's participatory subseries — drop an event only when *all* its subseries are activities
+# (Silent Disco, World at Play, kids storytime, wellbeing, social dance), so programmed performances
+# (incl. films, which have no dedicated subseries) are kept. Category comes from the per-event
+# discipline icon: FILM/THEATER/COMEDY are explicit; dance styles → ballet; music genres → music.
+SFTC_ACTIVITY_SERIES = {
+    "silent disco", "world at play at lincoln center", "kids, teens, and families",
+    "the art of wellbeing", "sip & snack", "social dance", "swing into the summer of dance",
 }
+SFTC_THEATRE_ICONS = {"THEATER", "THEATRE", "COMEDY", "BURLESQUE", "CABARET"}
+SFTC_DANCE_ICONS = {
+    "DANCE", "BALLET", "BREAKDANCE", "BALBOA", "BHANGRA", "DANCEHALL", "HUSTLE", "LINDY HOP",
+    "SALSA", "SWING", "PANTSULA", "DISCO", "SILENT DISCO", "K-POP",
+}
+
+
+def _sftc_category(icons: list[str]) -> str:
+    """Discipline icons → calendar category (music is the default for a marquee performance)."""
+    up = {i.upper() for i in icons}
+    if "FILM" in up:
+        return "film"
+    if up & SFTC_THEATRE_ICONS:
+        return "theatre"
+    if up & SFTC_DANCE_ICONS:
+        return "ballet"
+    return "music"
 _SFTC_HEAD = re.compile(
     r'<h4 class="event-date">\s*(?:Mon|Tues|Wednes|Thurs|Fri|Satur|Sun)day,\s*'
     r"([A-Z][a-z]+)\s+(\d{1,2})\s+at\s+\d{1,2}:\d{2}\s*[ap]m\s*</h4>")
@@ -1811,8 +1829,8 @@ def _sftc_year(month: int, day: int) -> dt.date | None:
 def parse_summer_city(source: Source, text: str) -> list[dict[str, Any]]:
     """Lincoln Center Presents — Summer for the City. Pass 2 of the festival page: each
     <h4 class="event-date"> heading begins an event card; consume to the next heading. Keep only
-    marquee performances (those with a MUSIC/DANCE/FILM/THEATER/COMEDY discipline icon); the
-    discipline maps to the calendar category. Subseries (/s/<label>) tags annotate the entry."""
+    events in a marquee performance subseries (SFTC_PERFORMANCE_SERIES); category is the series
+    default, refined by the per-event discipline icon. Subseries tags also annotate the entry."""
     region = text[text.find("UPCOMING SHOWS"):] if "UPCOMING SHOWS" in text else text
     heads = list(_SFTC_HEAD.finditer(region))
     items, seen = [], set()
@@ -1821,10 +1839,12 @@ def parse_summer_city(source: Source, text: str) -> list[dict[str, Any]]:
         card = region[m.start():end]
         if "/series/summer-for-the-city" not in card:   # validate festival membership
             continue
+        tags = [normalize_space(html.unescape(x))
+                for x in re.findall(r'/series/summer-for-the-city/s/[^"]*">([^<]+)</a>', card)]
+        if any(t.lower() in SFTC_ACTIVITY_SERIES for t in tags):
+            continue   # any participatory-activity tag disqualifies it from the marquee set
         icons = [html.unescape(x).strip() for x in re.findall(r'show-icons-item-text">([^<]+)<', card)]
-        discipline = next((i for i in icons if i.upper() in SFTC_DISCIPLINE_CATEGORY), None)
-        if not discipline:   # participatory activity (no discipline) — dropped per marquee filter
-            continue
+        category = _sftc_category(icons)
         month = MONTH_NUMBERS.get(m.group(1).lower())
         if not month:
             continue
@@ -1846,11 +1866,9 @@ def parse_summer_city(source: Source, text: str) -> list[dict[str, Any]]:
         vm = re.search(r"show-card-loction-icon[^>]*>(.*?)</h2>", card, re.S)
         venue = normalize_space(strip_tags(html.unescape(vm.group(1)))) if vm else ""
         venue = venue or "Lincoln Center"
-        tags = [normalize_space(html.unescape(x))
-                for x in re.findall(r'/series/summer-for-the-city/s/[^"]*">([^<]+)</a>', card)]
         desc = "Summer for the City" + (" · " + " · ".join(tags) if tags else "")
         items.append({
-            "title": title, "category": SFTC_DISCIPLINE_CATEGORY[discipline.upper()],
+            "title": title, "category": category,
             "date_start": start.isoformat(), "date_label": format_us_date(start), "date_precision": "exact",
             "venue_or_platform": venue, "city": "New York", "source_url": url,
             "external_id": "sftc:" + url, "description": desc, "importance_score": 14,
