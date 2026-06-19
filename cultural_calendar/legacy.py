@@ -2335,6 +2335,19 @@ CARNEGIE_ALGOLIA = {
     "index": "prod_Events",
 }
 CARNEGIE_HALLS = re.compile(r"Stern Auditorium|Perelman Stage|Zankel Hall")
+
+
+def carnegie_hall_label(facility: str) -> str:
+    """Name the specific Carnegie hall (Stern, Zankel, Weill) rather than just 'Carnegie Hall'.
+    (Weill is excluded upstream — it's almost entirely student/rental recitals — but the
+    mapping covers it for completeness.)"""
+    if "Stern Auditorium" in facility or "Perelman Stage" in facility:
+        return "Stern Auditorium, Carnegie Hall"
+    if "Zankel Hall" in facility:
+        return "Zankel Hall, Carnegie Hall"
+    if "Weill Recital Hall" in facility:
+        return "Weill Recital Hall, Carnegie Hall"
+    return "Carnegie Hall"
 CARNEGIE_RENTAL_MILLS = re.compile(
     r"MidAmerica|Manhattan Concert|National Concerts|DCINY|Distinguished Concerts|"
     r"AWR Music|Concerti Sinfonietta|Perfect Harmony",
@@ -2395,12 +2408,12 @@ def import_carnegie(conn: sqlite3.Connection, source: Source) -> int:
             "date_start": start.isoformat(),
             "date_label": format_us_date(start),
             "date_precision": "exact",
-            "venue_or_platform": "Carnegie Hall",
+            "venue_or_platform": carnegie_hall_label(hit.get("facility", "")),
             "city": "New York",
             "source_url": urljoin("https://www.carnegiehall.org", hit.get("url", "/events")),
             "external_id": f"carnegie:{key[:60]}",
             "people": people,
-            "description": f"Carnegie Hall — {hit.get('facility','')}".strip(" —"),
+            "description": "Carnegie Hall",
             "importance_score": 16,
         }
         upsert_item(conn, source, item)
