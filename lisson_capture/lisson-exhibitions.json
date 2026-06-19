@@ -1,0 +1,20 @@
+{
+  "capturedAt": "2026-06-19",
+  "items": [
+    {
+      "title": "Hiroshi Sugimoto",
+      "category": "art",
+      "date_start": "2026-09-01",
+      "date_end": null,
+      "date_label": "September – October 2026",
+      "date_precision": "month",
+      "venue_or_platform": "Lisson Gallery",
+      "city": "New York",
+      "source_url": "https://www.lissongallery.com/exhibitions/hiroshi-sugimoto-91293d6d-4567-48ba-81a0-3986eb6b1360",
+      "external_id": "lisson:/exhibitions/hiroshi-sugimoto-91293d6d-4567-48ba-81a0-3986eb6b1360",
+      "description": "Lisson Gallery, New York",
+      "importance_score": 14,
+      "_misses": 0
+    }
+  ]
+}

@@ -39,6 +39,8 @@ MAM_CAPTURE = ROOT / "mam_capture" / "mam-paris-exhibitions.json"
 FRICK_CAPTURE = ROOT / "frick_capture" / "frick-exhibitions.json"
 OCULA_CAPTURE = ROOT / "ocula_capture" / "ocula-ny.json"
 MARIAN_GOODMAN_CACHE = ROOT / "marian_goodman_capture" / "marian-goodman-exhibitions.json"
+LISSON_CACHE = ROOT / "lisson_capture" / "lisson-exhibitions.json"
+TANYA_BONAKDAR_CACHE = ROOT / "tanya_bonakdar_capture" / "tanya-bonakdar-exhibitions.json"
 
 MONTH_PATTERN = r"Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec|January|February|March|April|May|June|July|August|September|October|November|December"
 MONTH_RE = rf"(?:{MONTH_PATTERN})"

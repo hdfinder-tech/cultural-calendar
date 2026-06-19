@@ -33,6 +33,8 @@ _DEDICATED: dict[str, tuple[str, object, bool]] = {
     "the_shed": ("html", legacy.import_the_shed, False),
     "ocula": ("capture", legacy.import_ocula, False),
     "marian_goodman": ("html", legacy.import_marian_goodman, False),
+    "lisson": ("html", legacy.import_lisson, False),
+    "tanya_bonakdar": ("html", legacy.import_tanya_bonakdar, False),
 }
 
 # Tactic label for the html-catch-all sources (for docs/health/tests clarity).
@@ -61,7 +63,7 @@ EXPECTED_ROWS: dict[str, tuple[int, int]] = {
     "pac_nyc": (1, 25), "the_shed": (1, 25), "armory": (0, 30), "tate_modern": (0, 20), "tate_britain": (0, 20), "serpentine": (0, 20),
     "npg_london": (0, 20), "fondation_lv": (0, 20), "grand_palais": (0, 20),
     "centre_pompidou": (0, 20), "va_london": (0, 20), "mam_paris": (0, 20),
-    "ocula": (0, 40), "marian_goodman": (0, 20),
+    "ocula": (0, 40), "marian_goodman": (0, 20), "lisson": (0, 20), "tanya_bonakdar": (0, 20),
 }
 
 

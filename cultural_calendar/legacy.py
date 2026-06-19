@@ -27,7 +27,7 @@ import requests
 # Migrated to the cultural_calendar package (behavior-preserving re-org); re-exported here
 # so this module stays runnable during the migration.
 from cultural_calendar.core.config import *  # noqa: F401,F403
-from cultural_calendar.core.config import ROOT, DATA_DIR, RAW_DIR, DETAIL_DIR, DB_PATH, SOURCES_PATH, HTML_PATH, MOMA_CAPTURE_LINKS, MET_CAPTURE, MET_OPERA_CAPTURE, ARMORY_CAPTURE, SERPENTINE_CAPTURE, VA_CACHE, TATE_MODERN_CACHE, TATE_BRITAIN_CACHE, FLV_CACHE, NPG_CAPTURE, GRAND_PALAIS_CAPTURE, POMPIDOU_CAPTURE, MAM_CAPTURE, FRICK_CAPTURE, OCULA_CAPTURE, MARIAN_GOODMAN_CACHE, MONTH_PATTERN, MONTH_RE, MONTH_NUMBERS, Source, today, end_date, load_sources
+from cultural_calendar.core.config import ROOT, DATA_DIR, RAW_DIR, DETAIL_DIR, DB_PATH, SOURCES_PATH, HTML_PATH, MOMA_CAPTURE_LINKS, MET_CAPTURE, MET_OPERA_CAPTURE, ARMORY_CAPTURE, SERPENTINE_CAPTURE, VA_CACHE, TATE_MODERN_CACHE, TATE_BRITAIN_CACHE, FLV_CACHE, NPG_CAPTURE, GRAND_PALAIS_CAPTURE, POMPIDOU_CAPTURE, MAM_CAPTURE, FRICK_CAPTURE, OCULA_CAPTURE, MARIAN_GOODMAN_CACHE, LISSON_CACHE, TANYA_BONAKDAR_CACHE, MONTH_PATTERN, MONTH_RE, MONTH_NUMBERS, Source, today, end_date, load_sources
 from cultural_calendar.core.html import normalize_space, strip_tags, LinkTextParser, ArticleParser, MetaParser  # noqa: F401
 
 
@@ -1165,9 +1165,10 @@ OCULA_MAJOR_GALLERIES = {
     "lehmann-maupin": "Lehmann Maupin", "gladstone-gallery": "Gladstone",
     "matthew-marks-gallery": "Matthew Marks",
     "paula-cooper-gallery": "Paula Cooper", "303-gallery": "303 Gallery", "petzel": "Petzel",
-    "sean-kelly": "Sean Kelly", "lisson-gallery": "Lisson Gallery", "sprueth-magers": "Sprüth Magers",
+    "sean-kelly": "Sean Kelly", "sprueth-magers": "Sprüth Magers",
     "kasmin-gallery": "Kasmin", "luhring-augustine": "Luhring Augustine", "casey-kaplan": "Casey Kaplan",
-    "andrew-kreps-gallery": "Andrew Kreps", "tanya-bonakdar-gallery": "Tanya Bonakdar",
+    "andrew-kreps-gallery": "Andrew Kreps",
+    # Lisson and Tanya Bonakdar are scraped directly (import_lisson / import_tanya_bonakdar).
 }
 
 
@@ -1357,6 +1358,119 @@ def import_marian_goodman(conn: sqlite3.Connection, source: Source) -> int:
     """Marian Goodman NY forthcoming exhibitions — scriptable, cache-backed per the integrity rule."""
     return import_with_cache(conn, source, MARIAN_GOODMAN_CACHE, parse_marian_goodman,
                              must_contain=("heading_title",))
+
+
+def parse_show_dates(datestr: str):
+    """Parse a gallery date string in UK ('1 May – 25 July 2026') or US
+    ('April 30 - July 31, 2026') order → (start_iso, end_iso|None, label, 'exact'). Pass only
+    the date substring (not the whole card) so stray numbers aren't read as days."""
+    s = normalize_space(html.unescape(datestr))
+    year_m = re.search(r"20\d{2}", s)
+    if not year_m:
+        return None
+    year = int(year_m.group())
+    cands = []  # (position, day, month_name)
+    for m in re.finditer(rf"\b(\d{{1,2}})\s+({MONTH_PATTERN})\b", s):   # UK: D Month
+        cands.append((m.start(), int(m.group(1)), m.group(2)))
+    for m in re.finditer(rf"\b({MONTH_PATTERN})\s+(\d{{1,2}})\b", s):   # US: Month D
+        cands.append((m.start(), int(m.group(2)), m.group(1)))
+    cands.sort()
+
+    def mk(day, month_name, yr):
+        mon = MONTH_NUMBERS.get(month_name.strip(".").lower())
+        try:
+            return dt.date(yr, mon, day) if mon else None
+        except ValueError:
+            return None
+
+    if not cands:
+        # Day-less start, e.g. "September – October 2026" — anchor to the 1st (month precision).
+        month_m = re.search(rf"({MONTH_PATTERN})", s)
+        start = mk(1, month_m.group(1), year) if month_m else None
+        return (start.isoformat(), None, s, "month") if start else None
+
+    start = mk(cands[0][1], cands[0][2], year)
+    if not start:
+        return None
+    end = mk(cands[-1][1], cands[-1][2], year) if len(cands) > 1 else None
+    if end and end < start:  # range wraps the year boundary
+        end = mk(cands[-1][1], cands[-1][2], year + 1)
+    return start.isoformat(), end.isoformat() if end else None, s, "exact"
+
+
+def parse_lisson(source: Source, text: str) -> list[dict[str, Any]]:
+    """Lisson NY upcoming shows. Each card: a `link-discreet` anchor whose inner text is
+    Artist <br> date <br> location."""
+    items, seen = [], set()
+    for m in re.finditer(r'<a class="link-discreet" href="(/exhibitions/[^"]+)">(.*?)</a>', text, re.S):
+        href = m.group(1)
+        parts = [normalize_space(strip_tags(p)) for p in re.split(r"<br\s*/?>", m.group(2))]
+        parts = [p for p in parts if p]
+        if len(parts) < 3:
+            continue
+        name, datestr, location = parts[0], parts[1], parts[-1]
+        if "new york" not in location.lower():
+            continue
+        parsed = parse_show_dates(datestr)
+        if not parsed:
+            continue
+        start_iso, end_iso, label, precision = parsed
+        start = dt.date.fromisoformat(start_iso)
+        if start < today() or start > end_date():
+            continue
+        ext = f"lisson:{href}"
+        if ext in seen:
+            continue
+        seen.add(ext)
+        items.append({
+            "title": name, "category": "art", "date_start": start_iso, "date_end": end_iso,
+            "date_label": label, "date_precision": precision, "venue_or_platform": "Lisson Gallery",
+            "city": "New York", "source_url": "https://www.lissongallery.com" + href,
+            "external_id": ext, "description": "Lisson Gallery, New York", "importance_score": 14,
+        })
+    return items
+
+
+def import_lisson(conn: sqlite3.Connection, source: Source) -> int:
+    return import_with_cache(conn, source, LISSON_CACHE, parse_lisson, must_contain=("link-discreet",))
+
+
+def parse_tanya_bonakdar(source: Source, text: str) -> list[dict[str, Any]]:
+    """Tanya Bonakdar NY upcoming shows (Artlogic). Per `<li>` card: an exhibition link whose
+    slug encodes artist + location (…-new-york), and a `<span class="date">` (US format)."""
+    items, seen = [], set()
+    for chunk in re.split(r"<li\b", text)[1:]:
+        href = re.search(r'href="(/exhibitions/(\d+)-(.+?)-tanya-bonakdar-gallery-([a-z\-]+)/)"', chunk)
+        date = re.search(r'<span class="date">\s*([^<]+?)\s*</span>', chunk)
+        if not (href and date):
+            continue
+        if href.group(4) != "new-york":
+            continue
+        parsed = parse_show_dates(date.group(1))
+        if not parsed:
+            continue
+        start_iso, end_iso, label, precision = parsed
+        start = dt.date.fromisoformat(start_iso)
+        if start < today() or start > end_date():
+            continue
+        path = href.group(1)
+        ext = f"tanyabonakdar:{path}"
+        if ext in seen:
+            continue
+        seen.add(ext)
+        title = normalize_space(href.group(3).replace("-", " ")).title()
+        items.append({
+            "title": title, "category": "art", "date_start": start_iso, "date_end": end_iso,
+            "date_label": label, "date_precision": precision, "venue_or_platform": "Tanya Bonakdar",
+            "city": "New York", "source_url": "https://www.tanyabonakdargallery.com" + path,
+            "external_id": ext, "description": "Tanya Bonakdar Gallery, New York", "importance_score": 14,
+        })
+    return items
+
+
+def import_tanya_bonakdar(conn: sqlite3.Connection, source: Source) -> int:
+    return import_with_cache(conn, source, TANYA_BONAKDAR_CACHE, parse_tanya_bonakdar,
+                             must_contain=('class="date"',))
 
 
 

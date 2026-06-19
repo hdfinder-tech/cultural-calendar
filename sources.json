@@ -185,6 +185,22 @@
     "enabled": true
   },
   {
+    "id": "lisson",
+    "name": "Lisson Gallery (NY)",
+    "category": "art",
+    "type": "html",
+    "url": "https://www.lissongallery.com/exhibitions",
+    "enabled": true
+  },
+  {
+    "id": "tanya_bonakdar",
+    "name": "Tanya Bonakdar (NY)",
+    "category": "art",
+    "type": "html",
+    "url": "https://www.tanyabonakdargallery.com/exhibitions",
+    "enabled": true
+  },
+  {
     "id": "new_museum",
     "name": "New Museum",
     "category": "art",
