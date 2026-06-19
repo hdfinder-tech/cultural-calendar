@@ -62,3 +62,31 @@ def test_jsonld_event_extraction():
     name, sd = L._jsonld_event(page)
     assert name == "Big Band Holidays & More" and sd == "2026-12-15"
     assert L._jsonld_event("<html>no structured data</html>") == (None, None)
+
+
+_ABT_SRC = Source(id="abt", name="American Ballet Theatre", category="dance", type="html", url="x")
+
+
+def test_abt_groups_by_ballet_and_cleans_titles(monkeypatch):
+    monkeypatch.setattr(L, "today", lambda: dt.date(2026, 6, 1))
+    monkeypatch.setattr(L, "end_date", lambda: dt.date(2027, 12, 31))
+
+    def fake_fetch(url, *a, **k):
+        if "/events/swan-lake/" in url:
+            return '<meta property="og:title" content="Swan Lake | American Ballet Theatre (ABT) - Metropolitan Opera House">'
+        if "/events/onegin/" in url:
+            return '<meta property="og:title" content="Onegin - Met - American Ballet Theatre">'
+        return ""  # supplemental season pages: empty
+    monkeypatch.setattr(L, "fetch_text", fake_fetch)
+    page = (
+        "Metropolitan Opera House"
+        '<a href="/event_dates/swan-lake-2026-06-19-730pm/">x</a>'
+        '<a href="/event_dates/swan-lake-2026-07-18-200pm/">x</a>'   # range -> opening is earliest
+        '<a href="/event_dates/onegin-2026-06-23-730pm/">x</a>'
+        '<a href="/event_dates/giselle-2025-01-01-730pm/">past</a>'  # opening past -> dropped
+    )
+    items = sorted(L.parse_abt(_ABT_SRC, page), key=lambda i: i["date_start"])
+    assert [i["title"] for i in items] == ["Swan Lake", "Onegin"]   # dash/pipe junk stripped; past dropped
+    swan = items[0]
+    assert swan["date_start"] == "2026-06-19" and "–" in swan["date_label"]
+    assert swan["venue_or_platform"] == "Metropolitan Opera House" and swan["category"] == "dance"

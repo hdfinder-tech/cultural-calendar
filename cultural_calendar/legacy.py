@@ -1716,6 +1716,72 @@ def import_jalc(conn: sqlite3.Connection, source: Source) -> int:
                              must_contain=("jazz.org/concert/",))
 
 
+_ABT_SEASON_PAGES = [
+    "https://www.abt.org/performances/summer-season/",   # also source.url (page 1)
+    "https://www.abt.org/performances/fall-season/",
+    "https://www.abt.org/performances/spring-season/",
+]
+
+
+def _abt_title(slug: str) -> str:
+    """Proper production title from the ballet's /events/ page (og:title before the pipe),
+    falling back to a prettified slug."""
+    try:
+        og = re.search(r'og:title" content="([^"]+)', fetch_text(f"https://www.abt.org/events/{slug}/"))
+        if og:
+            # og:title is inconsistent: "Swan Lake | …" or "Onegin - Met - …"; take the lead segment.
+            return normalize_space(re.split(r"\s[|\-]\s", html.unescape(og.group(1)))[0])
+    except Exception:
+        pass
+    return slug.replace("-", " ").title()
+
+
+def parse_abt(source: Source, text: str) -> list[dict[str, Any]]:
+    """American Ballet Theatre. The season pages link each performance as
+    /event_dates/<ballet>-<YYYY-MM-DD>-<time>/, so group by ballet, take the earliest
+    in-horizon date as the opening, and label the run. Venue comes from the season page
+    (Met Opera House in summer; David H. Koch Theater in spring/fall)."""
+    pages = [text]
+    for url in _ABT_SEASON_PAGES[1:]:
+        try:
+            pages.append(fetch_text(url))
+        except Exception:
+            pass
+    items, seen = [], set()
+    for page in pages:
+        venue = ("Metropolitan Opera House" if "Metropolitan Opera House" in page
+                 else "David H. Koch Theater" if "David H. Koch Theater" in page
+                 else "American Ballet Theatre")
+        groups: dict[str, list[dt.date]] = {}
+        for ballet, iso in re.findall(r"/event_dates/([a-z0-9\-]+?)-(20\d\d-\d\d-\d\d)-[^/]*/", page):
+            try:
+                groups.setdefault(ballet, []).append(dt.date.fromisoformat(iso))
+            except ValueError:
+                continue
+        for ballet, dates in groups.items():
+            opening, closing = min(dates), max(dates)
+            if opening < today() or opening > end_date():
+                continue
+            key = f"abt:{ballet}:{opening.isoformat()}"
+            if key in seen:
+                continue
+            seen.add(key)
+            label = (f"{format_us_date(opening).rsplit(',', 1)[0]} – {format_us_date(closing)}"
+                     if closing > opening else format_us_date(opening))
+            items.append({
+                "title": _abt_title(ballet), "category": "dance", "date_start": opening.isoformat(),
+                "date_label": label, "date_precision": "exact",
+                "venue_or_platform": venue, "city": "New York",
+                "source_url": f"https://www.abt.org/events/{ballet}/", "external_id": key,
+                "description": f"American Ballet Theatre, {venue}", "importance_score": 15,
+            })
+    return items
+
+
+def import_abt(conn: sqlite3.Connection, source: Source) -> int:
+    return import_with_cache(conn, source, ABT_CACHE, parse_abt, must_contain=("/event_dates/",))
+
+
 
 
 def parse_met_exhibitions(source: Source, text: str, limit: int = 120) -> list[dict[str, Any]]:

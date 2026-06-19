@@ -359,5 +359,13 @@
     "type": "html",
     "url": "https://www.jazz.org/concerts-events/26-27-season-concerts/",
     "enabled": true
+  },
+  {
+    "id": "abt",
+    "name": "American Ballet Theatre",
+    "category": "dance",
+    "type": "html",
+    "url": "https://www.abt.org/performances/summer-season/",
+    "enabled": true
   }
 ]

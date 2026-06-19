@@ -1,0 +1,75 @@
+{
+  "capturedAt": "2026-06-19",
+  "items": [
+    {
+      "title": "Swan Lake",
+      "category": "dance",
+      "date_start": "2026-06-19",
+      "date_label": "Jun 19 – Jul 18, 2026",
+      "date_precision": "exact",
+      "venue_or_platform": "Metropolitan Opera House",
+      "city": "New York",
+      "source_url": "https://www.abt.org/events/swan-lake/",
+      "external_id": "abt:swan-lake:2026-06-19",
+      "description": "American Ballet Theatre, Metropolitan Opera House",
+      "importance_score": 15,
+      "_misses": 0
+    },
+    {
+      "title": "Onegin",
+      "category": "dance",
+      "date_start": "2026-06-23",
+      "date_label": "Jun 23 – Jun 27, 2026",
+      "date_precision": "exact",
+      "venue_or_platform": "Metropolitan Opera House",
+      "city": "New York",
+      "source_url": "https://www.abt.org/events/onegin/",
+      "external_id": "abt:onegin:2026-06-23",
+      "description": "American Ballet Theatre, Metropolitan Opera House",
+      "importance_score": 15,
+      "_misses": 0
+    },
+    {
+      "title": "Don Quixote",
+      "category": "dance",
+      "date_start": "2026-06-29",
+      "date_label": "Jun 29 – Jul 7, 2026",
+      "date_precision": "exact",
+      "venue_or_platform": "Metropolitan Opera House",
+      "city": "New York",
+      "source_url": "https://www.abt.org/events/don-quixote/",
+      "external_id": "abt:don-quixote:2026-06-29",
+      "description": "American Ballet Theatre, Metropolitan Opera House",
+      "importance_score": 15,
+      "_misses": 0
+    },
+    {
+      "title": "Sylvia",
+      "category": "dance",
+      "date_start": "2026-07-09",
+      "date_label": "Jul 9 – Jul 11, 2026",
+      "date_precision": "exact",
+      "venue_or_platform": "Metropolitan Opera House",
+      "city": "New York",
+      "source_url": "https://www.abt.org/events/sylvia/",
+      "external_id": "abt:sylvia:2026-07-09",
+      "description": "American Ballet Theatre, Metropolitan Opera House",
+      "importance_score": 15,
+      "_misses": 0
+    },
+    {
+      "title": "ABTKids",
+      "category": "dance",
+      "date_start": "2026-06-27",
+      "date_label": "Jun 27, 2026",
+      "date_precision": "exact",
+      "venue_or_platform": "Metropolitan Opera House",
+      "city": "New York",
+      "source_url": "https://www.abt.org/events/abtkids/",
+      "external_id": "abt:abtkids:2026-06-27",
+      "description": "American Ballet Theatre, Metropolitan Opera House",
+      "importance_score": 15,
+      "_misses": 0
+    }
+  ]
+}
