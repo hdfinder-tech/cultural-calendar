@@ -1586,6 +1586,10 @@ def parse_merkin(source: Source, text: str) -> list[dict[str, Any]]:
     items, seen = [], set()
     for pg in pages:
         for rec in _merkin_records(pg):
+            # Keep only Kaufman's own programming (incl. co-presentations); drop pure rentals
+            # — the bulk of Merkin's calendar is external presenters (student/competition recitals).
+            if "kaufman music center" not in rec["presenter"].lower():
+                continue
             start = rec["date"]
             if not start or start < today() or start > end_date():
                 continue
