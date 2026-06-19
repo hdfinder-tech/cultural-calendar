@@ -1,0 +1,89 @@
+{
+  "capturedAt": "2026-06-19",
+  "items": [
+    {
+      "title": "Musical Life Competition Winners Concert",
+      "category": "music",
+      "date_start": "2026-06-20",
+      "date_label": "Jun 20, 2026",
+      "date_precision": "exact",
+      "venue_or_platform": "Merkin Hall",
+      "city": "New York",
+      "source_url": "https://www.kaufmanmusiccenter.org/mch/event/musical-life-competition-winners-concert",
+      "external_id": "merkin:/mch/event/musical-life-competition-winners-concert",
+      "description": "Merkin Hall, Kaufman Music Center",
+      "importance_score": 14,
+      "_misses": 0
+    },
+    {
+      "title": "Musical Life Competition Winners Concert With Composers In Residence",
+      "category": "music",
+      "date_start": "2026-06-20",
+      "date_label": "Jun 20, 2026",
+      "date_precision": "exact",
+      "venue_or_platform": "Merkin Hall",
+      "city": "New York",
+      "source_url": "https://www.kaufmanmusiccenter.org/mch/event/musical-life-competition-winners-concert-with-composers",
+      "external_id": "merkin:/mch/event/musical-life-competition-winners-concert-with-composers",
+      "description": "Merkin Hall, Kaufman Music Center",
+      "importance_score": 14,
+      "_misses": 0
+    },
+    {
+      "title": "With Poetry and Justice for All: Three Anniversaries in Song",
+      "category": "music",
+      "date_start": "2026-06-21",
+      "date_label": "Jun 21, 2026",
+      "date_precision": "exact",
+      "venue_or_platform": "Merkin Hall",
+      "city": "New York",
+      "source_url": "https://www.kaufmanmusiccenter.org/mch/event/with-poetry-and-justice-for-all-three-anniversaries-in-songa",
+      "external_id": "merkin:/mch/event/with-poetry-and-justice-for-all-three-anniversaries-in-songa",
+      "description": "Merkin Hall, Kaufman Music Center",
+      "importance_score": 14,
+      "_misses": 0
+    },
+    {
+      "title": "Tzu Chi 60th Anniversary & TCYOLI 13th Annual Concert",
+      "category": "music",
+      "date_start": "2026-06-21",
+      "date_label": "Jun 21, 2026",
+      "date_precision": "exact",
+      "venue_or_platform": "Merkin Hall",
+      "city": "New York",
+      "source_url": "https://www.kaufmanmusiccenter.org/mch/event/tzu-chi-60th-anniversary-tcyoli-13th-annual-concert",
+      "external_id": "merkin:/mch/event/tzu-chi-60th-anniversary-tcyoli-13th-annual-concert",
+      "description": "Merkin Hall, Kaufman Music Center",
+      "importance_score": 14,
+      "_misses": 0
+    },
+    {
+      "title": "Scott Siegel's Broadway by the Seasons",
+      "category": "music",
+      "date_start": "2026-06-22",
+      "date_label": "Jun 22, 2026",
+      "date_precision": "exact",
+      "venue_or_platform": "Merkin Hall",
+      "city": "New York",
+      "source_url": "https://www.kaufmanmusiccenter.org/mch/event/scott-siegels-broadway-by-the-seasons2",
+      "external_id": "merkin:/mch/event/scott-siegels-broadway-by-the-seasons2",
+      "description": "Merkin Hall, Kaufman Music Center",
+      "importance_score": 14,
+      "_misses": 0
+    },
+    {
+      "title": "The Charly Prizewinners' Concert 2026, For Charly Dimston",
+      "category": "music",
+      "date_start": "2026-06-26",
+      "date_label": "Jun 26, 2026",
+      "date_precision": "exact",
+      "venue_or_platform": "Merkin Hall",
+      "city": "New York",
+      "source_url": "https://www.kaufmanmusiccenter.org/mch/event/the-charly-prizewinners-concert-2026-for-charly-dimston",
+      "external_id": "merkin:/mch/event/the-charly-prizewinners-concert-2026-for-charly-dimston",
+      "description": "Merkin Hall, Kaufman Music Center",
+      "importance_score": 14,
+      "_misses": 0
+    }
+  ]
+}

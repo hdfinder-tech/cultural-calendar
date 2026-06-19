@@ -15,6 +15,7 @@ import os
 import re
 import sqlite3
 import time
+from collections import Counter
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlencode, urljoin
@@ -27,7 +28,7 @@ import requests
 # Migrated to the cultural_calendar package (behavior-preserving re-org); re-exported here
 # so this module stays runnable during the migration.
 from cultural_calendar.core.config import *  # noqa: F401,F403
-from cultural_calendar.core.config import ROOT, DATA_DIR, RAW_DIR, DETAIL_DIR, DB_PATH, SOURCES_PATH, HTML_PATH, MOMA_CAPTURE_LINKS, MET_CAPTURE, MET_OPERA_CAPTURE, ARMORY_CAPTURE, SERPENTINE_CAPTURE, VA_CACHE, TATE_MODERN_CACHE, TATE_BRITAIN_CACHE, FLV_CACHE, NPG_CAPTURE, GRAND_PALAIS_CAPTURE, POMPIDOU_CAPTURE, MAM_CAPTURE, FRICK_CAPTURE, OCULA_CAPTURE, MARIAN_GOODMAN_CACHE, LISSON_CACHE, TANYA_BONAKDAR_CACHE, MONTH_PATTERN, MONTH_RE, MONTH_NUMBERS, Source, today, end_date, load_sources
+from cultural_calendar.core.config import ROOT, DATA_DIR, RAW_DIR, DETAIL_DIR, DB_PATH, SOURCES_PATH, HTML_PATH, MOMA_CAPTURE_LINKS, MET_CAPTURE, MET_OPERA_CAPTURE, ARMORY_CAPTURE, SERPENTINE_CAPTURE, VA_CACHE, TATE_MODERN_CACHE, TATE_BRITAIN_CACHE, FLV_CACHE, NPG_CAPTURE, GRAND_PALAIS_CAPTURE, POMPIDOU_CAPTURE, MAM_CAPTURE, FRICK_CAPTURE, OCULA_CAPTURE, MARIAN_GOODMAN_CACHE, LISSON_CACHE, TANYA_BONAKDAR_CACHE, BARGEMUSIC_CACHE, JOYCE_CACHE, MERKIN_CACHE, LINCOLN_CACHE, MONTH_PATTERN, MONTH_RE, MONTH_NUMBERS, Source, today, end_date, load_sources
 from cultural_calendar.core.html import normalize_space, strip_tags, LinkTextParser, ArticleParser, MetaParser  # noqa: F401
 
 
@@ -1471,6 +1472,121 @@ def parse_tanya_bonakdar(source: Source, text: str) -> list[dict[str, Any]]:
 def import_tanya_bonakdar(conn: sqlite3.Connection, source: Source) -> int:
     return import_with_cache(conn, source, TANYA_BONAKDAR_CACHE, parse_tanya_bonakdar,
                              must_contain=('class="date"',))
+
+
+def parse_bargemusic(source: Source, text: str) -> list[dict[str, Any]]:
+    """Bargemusic concerts from The Events Calendar (Tribe) WordPress REST API."""
+    try:
+        data = json.loads(text)
+    except ValueError:
+        return []
+    items, seen = [], set()
+    for ev in data.get("events", []):
+        sd = (ev.get("start_date") or "")[:10]
+        if not re.match(r"\d{4}-\d{2}-\d{2}", sd):
+            continue
+        start = dt.date.fromisoformat(sd)
+        if start < today() or start > end_date():
+            continue
+        title = normalize_space(html.unescape(strip_tags(ev.get("title") or "")))
+        if not title:
+            continue
+        ext = "bargemusic:" + str(ev.get("id") or ev.get("url") or title.lower())
+        if ext in seen:
+            continue
+        seen.add(ext)
+        ed = (ev.get("end_date") or "")[:10]
+        items.append({
+            "title": title, "category": "music", "date_start": sd,
+            "date_end": ed if (re.match(r"\d{4}-\d{2}-\d{2}", ed) and ed != sd) else None,
+            "date_label": format_us_date(start), "date_precision": "exact",
+            "venue_or_platform": "Bargemusic", "city": "New York",
+            "source_url": ev.get("url") or "https://www.bargemusic.org/",
+            "external_id": ext, "description": "Bargemusic, Brooklyn", "importance_score": 14,
+        })
+    return items
+
+
+def import_bargemusic(conn: sqlite3.Connection, source: Source) -> int:
+    return import_with_cache(conn, source, BARGEMUSIC_CACHE, parse_bargemusic, must_contain=('"events"',))
+
+
+def parse_joyce(source: Source, text: str) -> list[dict[str, Any]]:
+    """The Joyce Theater season page lists /performances/<slug> companies; each detail page
+    carries JSON-LD Event objects (one per show date). Opening = earliest startDate."""
+    items, seen = [], set()
+    for path in re.findall(r'href="(/performances/[a-z0-9\-]+)"', text):
+        if path in seen:
+            continue
+        seen.add(path)
+        try:
+            detail = fetch_text("https://www.joyce.org" + path)
+        except Exception:
+            continue
+        starts = sorted(re.findall(r'"startDate":"(20\d\d-\d\d-\d\d)', detail))
+        if not starts:
+            continue
+        start = dt.date.fromisoformat(starts[0])
+        if start < today() or start > end_date():
+            continue
+        ends = sorted(re.findall(r'"endDate":"(20\d\d-\d\d-\d\d)', detail) + starts)
+        title = normalize_space(html.unescape(
+            (re.search(r'og:title" content="([^"]+)"', detail) or [None, path.rsplit("/", 1)[-1]])[1]))
+        items.append({
+            "title": title, "category": "ballet", "date_start": start.isoformat(),
+            "date_end": ends[-1] if ends[-1] != start.isoformat() else None,
+            "date_label": format_us_date(start), "date_precision": "exact",
+            "venue_or_platform": "The Joyce Theater", "city": "New York",
+            "source_url": "https://www.joyce.org" + path, "external_id": "joyce:" + path,
+            "description": "The Joyce Theater, New York", "importance_score": 15,
+        })
+    return items
+
+
+def import_joyce(conn: sqlite3.Connection, source: Source) -> int:
+    return import_with_cache(conn, source, JOYCE_CACHE, parse_joyce, must_contain=("/performances/",))
+
+
+def parse_merkin(source: Source, text: str) -> list[dict[str, Any]]:
+    """Merkin Hall (Kaufman Music Center). The calendar lists /mch/event/<slug> links; the
+    JS month-grid has no full dates, so hydrate each detail page and take its most-frequent
+    in-horizon ISO date (the event date; rare stray dates are outvoted)."""
+    items, seen = [], set()
+    for path in re.findall(r"/mch/event/[a-z0-9\-]+", text):
+        if path in seen:
+            continue
+        seen.add(path)
+        try:
+            detail = fetch_text("https://www.kaufmanmusiccenter.org" + path)
+        except Exception:
+            continue
+        start = None
+        for iso, _ in Counter(re.findall(r"20\d\d-\d\d-\d\d", detail)).most_common():
+            try:
+                cand = dt.date.fromisoformat(iso)
+            except ValueError:
+                continue
+            if today() <= cand <= end_date():
+                start = cand
+                break
+        if not start:
+            continue
+        title = normalize_space(html.unescape((re.search(r"<title>([^<|]+)", detail) or [None, ""])[1]))
+        if not title:
+            continue
+        items.append({
+            "title": title, "category": "music", "date_start": start.isoformat(),
+            "date_label": format_us_date(start), "date_precision": "exact",
+            "venue_or_platform": "Merkin Hall", "city": "New York",
+            "source_url": "https://www.kaufmanmusiccenter.org" + path,
+            "external_id": "merkin:" + path, "description": "Merkin Hall, Kaufman Music Center",
+            "importance_score": 14,
+        })
+    return items
+
+
+def import_merkin(conn: sqlite3.Connection, source: Source) -> int:
+    return import_with_cache(conn, source, MERKIN_CACHE, parse_merkin, must_contain=("/mch/event/",))
 
 
 
@@ -3748,7 +3864,7 @@ CATEGORY_DISPLAY = {
 CATEGORY_DISPLAY_ORDER = ["film", "tv", "theatre", "art", "music", "opera", "ballet"]
 # Music splits into two editorial lanes in the render: live concerts vs. album releases.
 # PAC's music-genre events are live concerts, so they render in the Concerts lane too.
-CONCERT_MUSIC_SOURCES = {"nyphil_concerts", "carnegie_hall", "pac_nyc", "the_shed", "armory"}
+CONCERT_MUSIC_SOURCES = {"nyphil_concerts", "carnegie_hall", "pac_nyc", "the_shed", "armory", "bargemusic", "merkin", "alice_tully"}
 
 
 def render_html(conn: sqlite3.Connection) -> None:

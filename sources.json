@@ -319,5 +319,29 @@
     "type": "html",
     "url": "https://www.nycballet.com/season-and-tickets/seasons",
     "enabled": true
+  },
+  {
+    "id": "bargemusic",
+    "name": "Bargemusic",
+    "category": "music",
+    "type": "api",
+    "url": "https://www.bargemusic.org/wp-json/tribe/events/v1/events?per_page=100",
+    "enabled": true
+  },
+  {
+    "id": "joyce",
+    "name": "The Joyce Theater",
+    "category": "ballet",
+    "type": "html",
+    "url": "https://www.joyce.org/theme/fall-26-winter-27-5xnz",
+    "enabled": true
+  },
+  {
+    "id": "merkin",
+    "name": "Merkin Hall",
+    "category": "music",
+    "type": "html",
+    "url": "https://www.kaufmanmusiccenter.org/mch/calendar/",
+    "enabled": true
   }
 ]
