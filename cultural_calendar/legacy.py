@@ -3821,18 +3821,20 @@ def render_html(conn: sqlite3.Connection) -> None:
                     parts.append("<h3>Music · Concerts</h3>" + column_list(concerts))
                 if albums:
                     parts.append("<h3>Music · Albums</h3>" + column_list(albums))
-                blocks.append("".join(parts))
+                inner = "".join(parts)
             elif cat in compact_cats:
                 # Short label+title entries (e.g. horizon ballet seasons) read better as a
                 # two-column list than a sparse four-column table; keep the full season label.
-                blocks.append(head + column_list(rows, compact=False))
+                inner = head + column_list(rows, compact=False)
             else:
-                blocks.append(
+                inner = (
                     head
                     + "<table><thead><tr><th>Date</th><th>Title</th><th>Credits</th>"
                     "<th>Venue / Platform</th></tr></thead>"
                     f"<tbody>{entry_rows(rows)}</tbody></table>"
                 )
+            # data-cat lets the top-of-page category filter show/hide whole blocks.
+            blocks.append(f'<section class="catblock" data-cat="{cat}">{inner}</section>')
         return "".join(blocks)
 
     def calendar_view(rows: list[sqlite3.Row]) -> str:
@@ -3848,7 +3850,7 @@ def render_html(conn: sqlite3.Connection) -> None:
             meta = " · ".join(x for x in (r["venue_or_platform"], format_credits(r["people_json"])) if x)
             meta_html = f" <span class=\"cal-meta\">· {html.escape(meta)}</span>" if meta else ""
             return (
-                "<div class=\"cal-entry\">"
+                f"<div class=\"cal-entry\" data-cat=\"{r['category']}\">"
                 f"<span class=\"cal-cat\">{html.escape(cat)}</span>"
                 f"<span class=\"cal-body\"><a href=\"{html.escape(url)}\">{html.escape(r['title'])}</a>{meta_html}</span>"
                 "</div>"
@@ -3868,7 +3870,7 @@ def render_html(conn: sqlite3.Connection) -> None:
                     for r in albums
                 )
                 rendered.append(
-                    "<div class=\"cal-entry\"><span class=\"cal-cat\">Albums</span>"
+                    "<div class=\"cal-entry\" data-cat=\"music\"><span class=\"cal-cat\">Albums</span>"
                     f"<span class=\"cal-body\">{links}</span></div>"
                 )
             return "".join(rendered)
@@ -3900,17 +3902,30 @@ def render_html(conn: sqlite3.Connection) -> None:
     month_sections = []
     for mkey in sorted(months):
         label = dt.date(int(mkey[:4]), int(mkey[5:7]), 1).strftime("%B %Y")
-        month_sections.append(f"<h2>{label}</h2>" + category_blocks(months[mkey]))
+        month_sections.append(f'<section class="month"><h2>{label}</h2>{category_blocks(months[mkey])}</section>')
     calendar_html = calendar_view(dated)
 
-    horizon_by_cat: dict[str, list[sqlite3.Row]] = {}
+    # On the horizon: group by year so a year is always shown even when there's no month/season.
+    # Truly date-less rows (a bare "TBA") fall into a "Date TBA" bucket rather than implying a year.
+    horizon_by_year: dict[str, dict[str, list[sqlite3.Row]]] = {}
     for row in horizon_rows:
-        horizon_by_cat.setdefault(row["category"], []).append(row)
+        ym = re.search(r"20\d\d", row["date_label"] or "")
+        year = ym.group(0) if ym else "Date TBA"
+        horizon_by_year.setdefault(year, {}).setdefault(row["category"], []).append(row)
     horizon_html = ""
-    if horizon_by_cat:
+    if horizon_by_year:
+        years = sorted(y for y in horizon_by_year if y != "Date TBA")
+        if "Date TBA" in horizon_by_year:
+            years.append("Date TBA")
+        groups = "".join(
+            f'<section class="hyear-group"><h3 class="hyear">{y}</h3>'
+            + category_blocks(horizon_by_year[y], compact_cats=frozenset({"ballet"}))
+            + "</section>"
+            for y in years
+        )
         horizon_html = (
-            "<h2>On the horizon <span class=\"sub\">(announced, dates still vague)</span></h2>"
-            + category_blocks(horizon_by_cat, compact_cats=frozenset({"ballet"}))
+            '<section class="horizon-wrap"><h2>On the horizon '
+            '<span class="sub">(announced, dates still vague)</span></h2>' + groups + "</section>"
         )
 
     run_html = "".join(
@@ -3926,6 +3941,28 @@ def render_html(conn: sqlite3.Connection) -> None:
         shown = ", ".join(html.escape(n) for n in degraded[:8]) + (f" +{len(degraded) - 8}" if len(degraded) > 8 else "")
         runs_summary = f"Source runs — {len(degraded)} of {len(run_rows)} stale or unavailable"
         freshness_html = f"<p class=\"freshness\">Served from last-good cache where possible: {shown}.</p>"
+
+    present_cats = {row["category"] for row in dated} | {row["category"] for row in horizon_rows}
+    cat_order = [c for c in CATEGORY_DISPLAY_ORDER if c in present_cats]
+    filter_buttons = ('<div class="catfilter"><button class="active" data-filter="all">All</button>'
+        + "".join(f'<button data-filter="{c}">{html.escape(CATEGORY_DISPLAY.get(c, c.title()))}</button>'
+                  for c in cat_order) + "</div>")
+    filter_js = """<script>
+(function(){
+  var btns=document.querySelectorAll('.catfilter button');
+  function apply(cat){
+    btns.forEach(function(x){x.classList.toggle('active', x.dataset.filter===cat);});
+    document.querySelectorAll('[data-cat]').forEach(function(el){
+      el.style.display=(cat==='all'||el.dataset.cat===cat)?'':'none';
+    });
+    document.querySelectorAll('.month,.cal-day,.hyear-group,.horizon-wrap').forEach(function(c){
+      var vis=Array.prototype.some.call(c.querySelectorAll('[data-cat]'),function(e){return e.style.display!=='none';});
+      c.style.display=vis?'':'none';
+    });
+  }
+  btns.forEach(function(b){b.addEventListener('click',function(){apply(b.dataset.filter);});});
+})();
+</script>"""
 
     page = f"""<!doctype html>
 <html lang="en">
@@ -3958,6 +3995,12 @@ def render_html(conn: sqlite3.Connection) -> None:
     .cols2 .v {{ color: #8c8675; font-size: 12.5px; }}
     a {{ color: #3a5a66; text-decoration: none; }}
     a:hover {{ text-decoration: underline; }}
+    /* Category filter (JS): show only the chosen category across both views + the horizon. */
+    .catfilter {{ margin: 8px 0 2px; display: flex; flex-wrap: wrap; gap: 6px; }}
+    .catfilter button {{ cursor: pointer; padding: 4px 12px; font-size: 12.5px; font-family: inherit;
+      color: #6d685d; background: #f1eee4; border: 1px solid #cfc8b6; border-radius: 6px; }}
+    .catfilter button.active {{ background: #3a5a66; color: #f6f4ee; border-color: #3a5a66; }}
+    h3.hyear {{ font-size: 16px; text-transform: none; letter-spacing: .02em; color: #2a2722; margin: 20px 0 0; }}
     /* View toggle (pure CSS): Editorial (month -> category) vs Calendar (day-by-day). */
     input.vtoggle {{ position: absolute; opacity: 0; pointer-events: none; }}
     .viewtoggle {{ margin: 18px 0 4px; display: inline-flex; border: 1px solid #cfc8b6; border-radius: 7px; overflow: hidden; }}
@@ -3985,11 +4028,13 @@ def render_html(conn: sqlite3.Connection) -> None:
   <input id="view-editorial" class="vtoggle" type="radio" name="view" checked>
   <input id="view-calendar" class="vtoggle" type="radio" name="view">
   <div class="viewtoggle"><label for="view-editorial">Editorial</label><label for="view-calendar">Calendar</label></div>
+  {filter_buttons}
   <div class="view view-editorial">{''.join(month_sections)}</div>
   <div class="view view-calendar">{calendar_html}</div>
   {horizon_html}
   <details class="runs"><summary>{runs_summary}</summary>{freshness_html}<ul>{run_html}</ul></details>
   </main>
+  {filter_js}
 </body>
 </html>
 """
