@@ -4014,11 +4014,13 @@ def render_html(conn: sqlite3.Connection) -> None:
     apply();
   });});
   var box=document.querySelector('.csearch');
+  var clr=document.querySelector('.csearch-clear');
   if(box){
-    var run=function(){query=box.value;apply();};
+    var run=function(){query=box.value;apply();if(clr){clr.style.display=box.value?'block':'none';}};
     box.addEventListener('input',run);
     box.addEventListener('keyup',run);
     box.addEventListener('search',run);
+    if(clr){clr.addEventListener('click',function(){box.value='';box.focus();run();});}
   }
 })();
 </script>"""
@@ -4061,9 +4063,14 @@ def render_html(conn: sqlite3.Connection) -> None:
       color: #6d685d; background: #f1eee4; border: 1px solid #cfc8b6; border-radius: 6px; }}
     .catfilter button.active {{ background: #3a5a66; color: #f6f4ee; border-color: #3a5a66; }}
     h3.hyear {{ font-size: 16px; text-transform: none; letter-spacing: .02em; color: #2a2722; margin: 20px 0 0; }}
-    .csearch {{ margin: 12px 0 2px; width: 100%; max-width: 360px; box-sizing: border-box; padding: 8px 12px;
+    .csearch-wrap {{ position: relative; display: block; width: 100%; max-width: 360px; margin: 12px 0 2px; }}
+    .csearch {{ width: 100%; box-sizing: border-box; padding: 8px 32px 8px 12px;
       font-family: inherit; font-size: 14px; color: #322f29; background: #fbfaf5; border: 1px solid #cfc8b6; border-radius: 7px; }}
     .csearch:focus {{ outline: none; border-color: #3a5a66; }}
+    .csearch::-webkit-search-cancel-button {{ -webkit-appearance: none; appearance: none; }}
+    .csearch-clear {{ display: none; position: absolute; right: 3px; top: 0; height: 100%; border: none;
+      background: none; color: #8c8675; font-size: 19px; line-height: 1; cursor: pointer; padding: 0 9px; }}
+    .csearch-clear:hover {{ color: #3a5a66; }}
     /* View toggle (pure CSS): Editorial (month -> category) vs Calendar (day-by-day). */
     input.vtoggle {{ position: absolute; opacity: 0; pointer-events: none; }}
     .viewtoggle {{ margin: 18px 0 4px; display: inline-flex; border: 1px solid #cfc8b6; border-radius: 7px; overflow: hidden; }}
@@ -4101,7 +4108,8 @@ def render_html(conn: sqlite3.Connection) -> None:
       .cal-entry {{ flex-direction: column; gap: 1px; }}
       .cal-cat {{ flex: none; padding-top: 0; }}
       .catfilter button {{ padding: 6px 13px; }}
-      .csearch {{ max-width: none; font-size: 16px; }}
+      .csearch-wrap {{ max-width: none; }}
+      .csearch {{ font-size: 16px; }}
     }}
   </style>
 </head>
@@ -4112,7 +4120,7 @@ def render_html(conn: sqlite3.Connection) -> None:
   <input id="view-editorial" class="vtoggle" type="radio" name="view" checked>
   <input id="view-calendar" class="vtoggle" type="radio" name="view">
   <div class="viewtoggle"><label for="view-editorial">Editorial</label><label for="view-calendar">Calendar</label></div>
-  <input type="search" class="csearch" placeholder="Search titles, people, venues…" aria-label="Search the calendar" autocomplete="off">
+  <span class="csearch-wrap"><input type="search" class="csearch" placeholder="Search titles, people, venues…" aria-label="Search the calendar" autocomplete="off"><button type="button" class="csearch-clear" aria-label="Clear search">&times;</button></span>
   {filter_buttons}
   <div class="view view-editorial">{''.join(month_sections)}</div>
   <div class="view view-calendar">{calendar_html}</div>
