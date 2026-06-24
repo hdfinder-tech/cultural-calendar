@@ -2631,6 +2631,7 @@ def is_relevant_tv_episode(episode: dict[str, Any], show: dict[str, Any], apertu
         "Prime Video",
         "Amazon Prime Video",
         "Apple TV+",
+        "Apple TV",  # TVmaze's current name for Apple's service (rebranded from "Apple TV+")
         "Disney+",
         "Hulu",
         "Max",
