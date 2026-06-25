@@ -98,14 +98,26 @@ clean fetch of the expected shape. (404 on a paginated crawl = end-of-pages, not
 ## Film (`tmdb_movies`)
 
 TMDb discover, US releases. Require a real US theatrical/limited release
-(`with_release_type=2|3`), cap to the top ~50 by popularity, and fetch credits
-(director/writer/cast) for every kept film. The cap doubles as a quality gate — the
-low-popularity tail is where non-US-relevant noise lives.
+(`with_release_type=2|3`) — this excludes pure direct-to-streaming films (TMDb release type 4),
+which is the quality gate (most prestige streaming films still get an awards-qualifying limited
+theatrical run and are caught). Coverage is **two passes** so the whole horizon is represented,
+not just the buzzy near term: a global popularity slate (`TMDB_GLOBAL_FILMS`) plus a per-month
+walk taking each month's top releases (`TMDB_PER_MONTH`), deduped by id. Every kept film is
+credit-enriched (director/writer/cast).
 
 ## Television (`tvmaze_full_schedule`)
 
 A signal feed, not an episode dump. Keep new-series premieres, season premieres,
-limited-series launches, and major streamer/network events. Drop ordinary mid-season episodes.
+limited-series launches, and major streamer/network events; drop ordinary mid-season episodes.
+
+`/schedule/full` includes streaming (web channels), so a premiere's `network` may be null and
+the platform lives on `webChannel`. `is_relevant_tv_episode` admits non-US shows only on a
+**global-streamer allowlist** (`major_global_streamers`) — **watch for streamer name drift**:
+TVmaze renamed Apple's service "Apple TV+" → "Apple TV" (Apple's 2025 rebrand), which silently
+dropped every Apple premiere until the allowlist was updated. If a marquee streamer's shows
+vanish, check the live `webChannel.name` against the allowlist *and* the `major_platforms`
+score map first. The gate also requires English (`language in {None, "English"}`) — a scope
+limit that excludes non-English originals (e.g. Netflix's *One Hundred Years of Solitude*).
 
 ## Theatre
 
